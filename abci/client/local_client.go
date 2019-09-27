@@ -3,8 +3,8 @@ package abcicli
 import (
 	"sync"
 
-	types "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	types "github.com/orientwalt/tendermint/abci/types"
+	cmn "github.com/orientwalt/tendermint/libs/common"
 )
 
 var _ Client = (*localClient)(nil)
@@ -81,24 +81,24 @@ func (app *localClient) SetOptionAsync(req types.RequestSetOption) *ReqRes {
 	)
 }
 
-func (app *localClient) DeliverTxAsync(params types.RequestDeliverTx) *ReqRes {
+func (app *localClient) DeliverTxAsync(tx []byte) *ReqRes {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
-	res := app.Application.DeliverTx(params)
+	res := app.Application.DeliverTx(tx)
 	return app.callback(
-		types.ToRequestDeliverTx(params),
+		types.ToRequestDeliverTx(tx),
 		types.ToResponseDeliverTx(res),
 	)
 }
 
-func (app *localClient) CheckTxAsync(req types.RequestCheckTx) *ReqRes {
+func (app *localClient) CheckTxAsync(tx []byte) *ReqRes {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
-	res := app.Application.CheckTx(req)
+	res := app.Application.CheckTx(tx)
 	return app.callback(
-		types.ToRequestCheckTx(req),
+		types.ToRequestCheckTx(tx),
 		types.ToResponseCheckTx(res),
 	)
 }
@@ -184,19 +184,19 @@ func (app *localClient) SetOptionSync(req types.RequestSetOption) (*types.Respon
 	return &res, nil
 }
 
-func (app *localClient) DeliverTxSync(req types.RequestDeliverTx) (*types.ResponseDeliverTx, error) {
+func (app *localClient) DeliverTxSync(tx []byte) (*types.ResponseDeliverTx, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
-	res := app.Application.DeliverTx(req)
+	res := app.Application.DeliverTx(tx)
 	return &res, nil
 }
 
-func (app *localClient) CheckTxSync(req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+func (app *localClient) CheckTxSync(tx []byte) (*types.ResponseCheckTx, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
-	res := app.Application.CheckTx(req)
+	res := app.Application.CheckTx(tx)
 	return &res, nil
 }
 

@@ -6,8 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/types"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/p2p"
+	"github.com/orientwalt/tendermint/types"
 )
 
 type RoundVoteSet struct {
@@ -82,7 +83,7 @@ func (hvs *HeightVoteSet) SetRound(round int) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	if hvs.round != 0 && (round < hvs.round+1) {
-		panic("SetRound() must increment hvs.round")
+		cmn.PanicSanity("SetRound() must increment hvs.round")
 	}
 	for r := hvs.round + 1; r <= round; r++ {
 		if _, ok := hvs.roundVoteSets[r]; ok {
@@ -95,7 +96,7 @@ func (hvs *HeightVoteSet) SetRound(round int) {
 
 func (hvs *HeightVoteSet) addRound(round int) {
 	if _, ok := hvs.roundVoteSets[round]; ok {
-		panic("addRound() for an existing round")
+		cmn.PanicSanity("addRound() for an existing round")
 	}
 	// log.Debug("addRound(round)", "round", round)
 	prevotes := types.NewVoteSet(hvs.chainID, hvs.height, round, types.PrevoteType, hvs.valSet)
@@ -168,7 +169,8 @@ func (hvs *HeightVoteSet) getVoteSet(round int, type_ types.SignedMsgType) *type
 	case types.PrecommitType:
 		return rvs.Precommits
 	default:
-		panic(fmt.Sprintf("Unexpected vote type %X", type_))
+		cmn.PanicSanity(fmt.Sprintf("Unexpected vote type %X", type_))
+		return nil
 	}
 }
 

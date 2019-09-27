@@ -1,20 +1,19 @@
 package core
 
 import (
-	"fmt"
 	"time"
 
-	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/consensus"
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/libs/log"
-	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/proxy"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/state/txindex"
-	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
+	cfg "github.com/orientwalt/tendermint/config"
+	"github.com/orientwalt/tendermint/consensus"
+	"github.com/orientwalt/tendermint/crypto"
+	dbm "github.com/orientwalt/tendermint/libs/db"
+	"github.com/orientwalt/tendermint/libs/log"
+	mempl "github.com/orientwalt/tendermint/mempool"
+	"github.com/orientwalt/tendermint/p2p"
+	"github.com/orientwalt/tendermint/proxy"
+	sm "github.com/orientwalt/tendermint/state"
+	"github.com/orientwalt/tendermint/state/txindex"
+	"github.com/orientwalt/tendermint/types"
 )
 
 const (
@@ -45,8 +44,7 @@ type transport interface {
 }
 
 type peers interface {
-	AddPersistentPeers([]string) error
-	DialPeersAsync([]string) error
+	DialPeersAsync(p2p.AddrBook, []string, bool) error
 	NumPeers() (outbound, inbound, dialig int)
 	Peers() p2p.IPeerSet
 }
@@ -74,7 +72,7 @@ var (
 	txIndexer        txindex.TxIndexer
 	consensusReactor *consensus.ConsensusReactor
 	eventBus         *types.EventBus // thread safe
-	mempool          mempl.Mempool
+	mempool          *mempl.Mempool
 
 	logger log.Logger
 
@@ -89,7 +87,7 @@ func SetBlockStore(bs sm.BlockStore) {
 	blockStore = bs
 }
 
-func SetMempool(mem mempl.Mempool) {
+func SetMempool(mem *mempl.Mempool) {
 	mempool = mem
 }
 
@@ -146,24 +144,19 @@ func SetConfig(c cfg.RPCConfig) {
 	config = c
 }
 
-func validatePage(page, perPage, totalCount int) (int, error) {
+func validatePage(page, perPage, totalCount int) int {
 	if perPage < 1 {
-		panic(fmt.Sprintf("zero or negative perPage: %d", perPage))
-	}
-
-	if page == 0 {
-		return 1, nil // default
+		return 1
 	}
 
 	pages := ((totalCount - 1) / perPage) + 1
-	if pages == 0 {
-		pages = 1 // one page (even if it's empty)
-	}
-	if page < 0 || page > pages {
-		return 1, fmt.Errorf("page should be within [0, %d] range, given %d", pages, page)
+	if page < 1 {
+		page = 1
+	} else if page > pages {
+		page = pages
 	}
 
-	return page, nil
+	return page
 }
 
 func validatePerPage(perPage int) int {

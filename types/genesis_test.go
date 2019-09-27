@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	tmtime "github.com/tendermint/tendermint/types/time"
+	"github.com/orientwalt/tendermint/crypto/ed25519"
+	tmtime "github.com/orientwalt/tendermint/types/time"
 )
 
 func TestGenesisBad(t *testing.T) {
@@ -68,7 +68,7 @@ func TestGenesisGood(t *testing.T) {
 	genDoc.ConsensusParams.Block.MaxBytes = 0
 	genDocBytes, err = cdc.MarshalJSON(genDoc)
 	assert.NoError(t, err, "error marshalling genDoc")
-	_, err = GenesisDocFromJSON(genDocBytes)
+	genDoc, err = GenesisDocFromJSON(genDocBytes)
 	assert.Error(t, err, "expected error for genDoc json with block size of 0")
 
 	// Genesis doc from raw json

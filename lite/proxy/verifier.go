@@ -1,11 +1,11 @@
 package proxy
 
 import (
-	cmn "github.com/tendermint/tendermint/libs/common"
-	log "github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/lite"
-	lclient "github.com/tendermint/tendermint/lite/client"
-	dbm "github.com/tendermint/tm-db"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	dbm "github.com/orientwalt/tendermint/libs/db"
+	log "github.com/orientwalt/tendermint/libs/log"
+	"github.com/orientwalt/tendermint/lite"
+	lclient "github.com/orientwalt/tendermint/lite/client"
 )
 
 func NewVerifier(chainID, rootDir string, client lclient.SignStatusClient, logger log.Logger, cacheSize int) (*lite.DynamicVerifier, error) {
@@ -14,7 +14,7 @@ func NewVerifier(chainID, rootDir string, client lclient.SignStatusClient, logge
 	logger.Info("lite/proxy/NewVerifier()...", "chainID", chainID, "rootDir", rootDir, "client", client)
 
 	memProvider := lite.NewDBProvider("trusted.mem", dbm.NewMemDB()).SetLimit(cacheSize)
-	lvlProvider := lite.NewDBProvider("trusted.lvl", dbm.NewDB("trust-base", dbm.GoLevelDBBackend, rootDir))
+	lvlProvider := lite.NewDBProvider("trusted.lvl", dbm.NewDB("trust-base", dbm.LevelDBBackend, rootDir))
 	trust := lite.NewMultiProvider(
 		memProvider,
 		lvlProvider,

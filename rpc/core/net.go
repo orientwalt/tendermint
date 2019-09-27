@@ -5,9 +5,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/tendermint/p2p"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	"github.com/orientwalt/tendermint/p2p"
+	ctypes "github.com/orientwalt/tendermint/rpc/core/types"
+	rpctypes "github.com/orientwalt/tendermint/rpc/lib/types"
 )
 
 // Get network info.
@@ -184,8 +184,10 @@ func UnsafeDialSeeds(ctx *rpctypes.Context, seeds []string) (*ctypes.ResultDialS
 	if len(seeds) == 0 {
 		return &ctypes.ResultDialSeeds{}, errors.New("No seeds provided")
 	}
-	logger.Info("DialSeeds", "seeds", seeds)
-	if err := p2pPeers.DialPeersAsync(seeds); err != nil {
+	// starts go routines to dial each peer after random delays
+	logger.Info("DialSeeds", "addrBook", addrBook, "seeds", seeds)
+	err := p2pPeers.DialPeersAsync(addrBook, seeds, false)
+	if err != nil {
 		return &ctypes.ResultDialSeeds{}, err
 	}
 	return &ctypes.ResultDialSeeds{Log: "Dialing seeds in progress. See /net_info for details"}, nil
@@ -195,13 +197,10 @@ func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent bool) (*c
 	if len(peers) == 0 {
 		return &ctypes.ResultDialPeers{}, errors.New("No peers provided")
 	}
-	logger.Info("DialPeers", "peers", peers, "persistent", persistent)
-	if persistent {
-		if err := p2pPeers.AddPersistentPeers(peers); err != nil {
-			return &ctypes.ResultDialPeers{}, err
-		}
-	}
-	if err := p2pPeers.DialPeersAsync(peers); err != nil {
+	// starts go routines to dial each peer after random delays
+	logger.Info("DialPeers", "addrBook", addrBook, "peers", peers, "persistent", persistent)
+	err := p2pPeers.DialPeersAsync(addrBook, peers, persistent)
+	if err != nil {
 		return &ctypes.ResultDialPeers{}, err
 	}
 	return &ctypes.ResultDialPeers{Log: "Dialing peers in progress. See /net_info for details"}, nil

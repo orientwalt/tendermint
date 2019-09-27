@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
-	nm "github.com/tendermint/tendermint/node"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	nm "github.com/orientwalt/tendermint/node"
 )
 
 // AddNodeFlags exposes some common configuration options on the command-line
@@ -19,7 +19,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().String("priv_validator_laddr", config.PrivValidatorListenAddr, "Socket address to listen on for connections from external priv_validator process")
 
 	// node flags
-	cmd.Flags().Bool("fast_sync", config.FastSyncMode, "Fast blockchain syncing")
+	cmd.Flags().Bool("fast_sync", config.FastSync, "Fast blockchain syncing")
 
 	// abci flags
 	cmd.Flags().String("proxy_app", config.ProxyApp, "Proxy app address, or one of: 'kvstore', 'persistent_kvstore', 'counter', 'counter_serial' or 'noop' for local testing.")

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/crypto"
+	cmn "github.com/orientwalt/tendermint/libs/common"
 )
 
 // Volatile state for each Validator
@@ -41,20 +41,19 @@ func (v *Validator) CompareProposerPriority(other *Validator) *Validator {
 	if v == nil {
 		return other
 	}
-	switch {
-	case v.ProposerPriority > other.ProposerPriority:
+	if v.ProposerPriority > other.ProposerPriority {
 		return v
-	case v.ProposerPriority < other.ProposerPriority:
+	} else if v.ProposerPriority < other.ProposerPriority {
 		return other
-	default:
+	} else {
 		result := bytes.Compare(v.Address, other.Address)
-		switch {
-		case result < 0:
+		if result < 0 {
 			return v
-		case result > 0:
+		} else if result > 0 {
 			return other
-		default:
-			panic("Cannot compare identical validators")
+		} else {
+			cmn.PanicSanity("Cannot compare identical validators")
+			return nil
 		}
 	}
 }

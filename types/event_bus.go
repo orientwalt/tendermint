@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/log"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/libs/log"
+	tmpubsub "github.com/orientwalt/tendermint/libs/pubsub"
 )
 
 const defaultCapacity = 0
@@ -91,32 +90,20 @@ func (b *EventBus) UnsubscribeAll(ctx context.Context, subscriber string) error 
 func (b *EventBus) Publish(eventType string, eventData TMEventData) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
-	return b.pubsub.PublishWithEvents(ctx, eventData, map[string][]string{EventTypeKey: {eventType}})
+	b.pubsub.PublishWithTags(ctx, eventData, map[string]string{EventTypeKey: eventType})
+	return nil
 }
 
-// validateAndStringifyEvents takes a slice of event objects and creates a
-// map of stringified events where each key is composed of the event
-// type and each of the event's attributes keys in the form of
-// "{event.Type}.{attribute.Key}" and the value is each attribute's value.
-func (b *EventBus) validateAndStringifyEvents(events []types.Event, logger log.Logger) map[string][]string {
-	result := make(map[string][]string)
-	for _, event := range events {
-		if len(event.Type) == 0 {
-			logger.Debug("Got an event with an empty type (skipping)", "event", event)
+func (b *EventBus) validateAndStringifyTags(tags []cmn.KVPair, logger log.Logger) map[string]string {
+	result := make(map[string]string)
+	for _, tag := range tags {
+		// basic validation
+		if len(tag.Key) == 0 {
+			logger.Debug("Got tag with an empty key (skipping)", "tag", tag)
 			continue
 		}
-
-		for _, attr := range event.Attributes {
-			if len(attr.Key) == 0 {
-				logger.Debug("Got an event attribute with an empty key(skipping)", "event", event)
-				continue
-			}
-
-			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
-			result[compositeTag] = append(result[compositeTag], string(attr.Value))
-		}
+		result[string(tag.Key)] = string(tag.Value)
 	}
-
 	return result
 }
 
@@ -124,27 +111,31 @@ func (b *EventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
 
-	resultEvents := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...)
-	events := b.validateAndStringifyEvents(resultEvents, b.Logger.With("block", data.Block.StringShort()))
+	resultTags := append(data.ResultBeginBlock.Tags, data.ResultEndBlock.Tags...)
+	tags := b.validateAndStringifyTags(resultTags, b.Logger.With("block", data.Block.StringShort()))
 
-	// add predefined new block event
-	events[EventTypeKey] = append(events[EventTypeKey], EventNewBlock)
+	// add predefined tags
+	logIfTagExists(EventTypeKey, tags, b.Logger)
+	tags[EventTypeKey] = EventNewBlock
 
-	return b.pubsub.PublishWithEvents(ctx, data, events)
+	b.pubsub.PublishWithTags(ctx, data, tags)
+	return nil
 }
 
 func (b *EventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
 
-	resultTags := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...)
+	resultTags := append(data.ResultBeginBlock.Tags, data.ResultEndBlock.Tags...)
 	// TODO: Create StringShort method for Header and use it in logger.
-	events := b.validateAndStringifyEvents(resultTags, b.Logger.With("header", data.Header))
+	tags := b.validateAndStringifyTags(resultTags, b.Logger.With("header", data.Header))
 
-	// add predefined new block header event
-	events[EventTypeKey] = append(events[EventTypeKey], EventNewBlockHeader)
+	// add predefined tags
+	logIfTagExists(EventTypeKey, tags, b.Logger)
+	tags[EventTypeKey] = EventNewBlockHeader
 
-	return b.pubsub.PublishWithEvents(ctx, data, events)
+	b.pubsub.PublishWithTags(ctx, data, tags)
+	return nil
 }
 
 func (b *EventBus) PublishEventVote(data EventDataVote) error {
@@ -162,14 +153,20 @@ func (b *EventBus) PublishEventTx(data EventDataTx) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
 
-	events := b.validateAndStringifyEvents(data.Result.Events, b.Logger.With("tx", data.Tx))
+	tags := b.validateAndStringifyTags(data.Result.Tags, b.Logger.With("tx", data.Tx))
 
 	// add predefined tags
-	events[EventTypeKey] = append(events[EventTypeKey], EventTx)
-	events[TxHashKey] = append(events[TxHashKey], fmt.Sprintf("%X", data.Tx.Hash()))
-	events[TxHeightKey] = append(events[TxHeightKey], fmt.Sprintf("%d", data.Height))
+	logIfTagExists(EventTypeKey, tags, b.Logger)
+	tags[EventTypeKey] = EventTx
 
-	return b.pubsub.PublishWithEvents(ctx, data, events)
+	logIfTagExists(TxHashKey, tags, b.Logger)
+	tags[TxHashKey] = fmt.Sprintf("%X", data.Tx.Hash())
+
+	logIfTagExists(TxHeightKey, tags, b.Logger)
+	tags[TxHeightKey] = fmt.Sprintf("%d", data.Height)
+
+	b.pubsub.PublishWithTags(ctx, data, tags)
+	return nil
 }
 
 func (b *EventBus) PublishEventNewRoundStep(data EventDataRoundState) error {
@@ -210,6 +207,12 @@ func (b *EventBus) PublishEventLock(data EventDataRoundState) error {
 
 func (b *EventBus) PublishEventValidatorSetUpdates(data EventDataValidatorSetUpdates) error {
 	return b.Publish(EventValidatorSetUpdates, data)
+}
+
+func logIfTagExists(tag string, tags map[string]string, logger log.Logger) {
+	if value, ok := tags[tag]; ok {
+		logger.Error("Found predefined tag (value will be overwritten)", "tag", tag, "value", value)
+	}
 }
 
 //-----------------------------------------------------------------------------

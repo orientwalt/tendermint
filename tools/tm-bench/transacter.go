@@ -20,8 +20,8 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/tendermint/libs/log"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	"github.com/orientwalt/tendermint/libs/log"
+	rpctypes "github.com/orientwalt/tendermint/rpc/lib/types"
 )
 
 const (

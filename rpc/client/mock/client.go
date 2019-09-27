@@ -17,12 +17,12 @@ want to directly call a tendermint node in process, you can use the
 import (
 	"reflect"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/rpc/client"
-	"github.com/tendermint/tendermint/rpc/core"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
-	"github.com/tendermint/tendermint/types"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/rpc/client"
+	"github.com/orientwalt/tendermint/rpc/core"
+	ctypes "github.com/orientwalt/tendermint/rpc/core/types"
+	rpctypes "github.com/orientwalt/tendermint/rpc/lib/types"
+	"github.com/orientwalt/tendermint/types"
 )
 
 // Client wraps arbitrary implementations of the various interfaces.
@@ -36,7 +36,6 @@ type Client struct {
 	client.HistoryClient
 	client.StatusClient
 	client.EventsClient
-	client.EvidenceClient
 	cmn.Service
 }
 
@@ -147,8 +146,4 @@ func (c Client) Commit(height *int64) (*ctypes.ResultCommit, error) {
 
 func (c Client) Validators(height *int64) (*ctypes.ResultValidators, error) {
 	return core.Validators(&rpctypes.Context{}, height)
-}
-
-func (c Client) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
-	return core.BroadcastEvidence(&rpctypes.Context{}, ev)
 }

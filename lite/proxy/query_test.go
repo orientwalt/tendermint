@@ -9,14 +9,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/abci/example/kvstore"
-	"github.com/tendermint/tendermint/crypto/merkle"
-	"github.com/tendermint/tendermint/lite"
-	certclient "github.com/tendermint/tendermint/lite/client"
-	nm "github.com/tendermint/tendermint/node"
-	"github.com/tendermint/tendermint/rpc/client"
-	rpctest "github.com/tendermint/tendermint/rpc/test"
-	"github.com/tendermint/tendermint/types"
+	"github.com/orientwalt/tendermint/abci/example/kvstore"
+	"github.com/orientwalt/tendermint/crypto/merkle"
+	"github.com/orientwalt/tendermint/lite"
+	certclient "github.com/orientwalt/tendermint/lite/client"
+	nm "github.com/orientwalt/tendermint/node"
+	"github.com/orientwalt/tendermint/rpc/client"
+	rpctest "github.com/orientwalt/tendermint/rpc/test"
+	"github.com/orientwalt/tendermint/types"
 )
 
 var node *nm.Node
@@ -143,13 +143,13 @@ func TestTxProofs(t *testing.T) {
 
 	// First let's make sure a bogus transaction hash returns a valid non-existence proof.
 	key := types.Tx([]byte("bogus")).Hash()
-	_, err = cl.Tx(key, true)
+	res, err := cl.Tx(key, true)
 	require.NotNil(err)
 	require.Contains(err.Error(), "not found")
 
 	// Now let's check with the real tx root hash.
 	key = types.Tx(tx).Hash()
-	res, err := cl.Tx(key, true)
+	res, err = cl.Tx(key, true)
 	require.NoError(err, "%#v", err)
 	require.NotNil(res)
 	keyHash := merkle.SimpleHashFromByteSlices([][]byte{key})

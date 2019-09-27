@@ -6,10 +6,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/libs/log"
+	"github.com/orientwalt/tendermint/libs/log"
 
-	"github.com/tendermint/tendermint/libs/pubsub"
-	"github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/orientwalt/tendermint/libs/pubsub"
+	"github.com/orientwalt/tendermint/libs/pubsub/query"
 )
 
 func TestExample(t *testing.T) {
@@ -21,7 +21,7 @@ func TestExample(t *testing.T) {
 	ctx := context.Background()
 	subscription, err := s.Subscribe(ctx, "example-client", query.MustParse("abci.account.name='John'"))
 	require.NoError(t, err)
-	err = s.PublishWithEvents(ctx, "Tombstone", map[string][]string{"abci.account.name": {"John"}})
+	err = s.PublishWithTags(ctx, "Tombstone", map[string]string{"abci.account.name": "John"})
 	require.NoError(t, err)
 	assertReceive(t, "Tombstone", subscription.Out())
 }

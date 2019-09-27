@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/crypto"
+	"github.com/orientwalt/tendermint/crypto/ed25519"
+	cmn "github.com/orientwalt/tendermint/libs/common"
 )
 
 // ID is a hex-encoded crypto.Address

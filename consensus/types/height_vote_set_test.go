@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
+	cfg "github.com/orientwalt/tendermint/config"
+	"github.com/orientwalt/tendermint/types"
+	tmtime "github.com/orientwalt/tendermint/types/time"
 )
 
 var config *cfg.Config // NOTE: must be reset for each _test.go file
@@ -62,7 +62,7 @@ func makeVoteHR(t *testing.T, height int64, round int, privVals []types.PrivVali
 		Round:            round,
 		Timestamp:        tmtime.Now(),
 		Type:             types.PrecommitType,
-		BlockID:          types.BlockID{Hash: []byte("fakehash"), PartsHeader: types.PartSetHeader{}},
+		BlockID:          types.BlockID{[]byte("fakehash"), types.PartSetHeader{}},
 	}
 	chainID := config.ChainID()
 	err := privVal.SignVote(chainID, vote)

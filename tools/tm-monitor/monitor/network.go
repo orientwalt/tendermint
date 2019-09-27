@@ -5,7 +5,7 @@ import (
 	"time"
 
 	metrics "github.com/rcrowley/go-metrics"
-	tmtypes "github.com/tendermint/tendermint/types"
+	tmtypes "github.com/orientwalt/tendermint/types"
 )
 
 // UptimeData stores data for how long network has been running.
@@ -163,12 +163,11 @@ func (n *Network) updateHealth() {
 	// TODO: make sure they're all at the same height (within a block)
 	// and all proposing (and possibly validating ) Alternatively, just
 	// check there hasn't been a new round in numValidators rounds
-	switch {
-	case n.NumValidators != 0 && n.NumNodesMonitoredOnline == n.NumValidators:
+	if n.NumValidators != 0 && n.NumNodesMonitoredOnline == n.NumValidators {
 		n.Health = FullHealth
-	case n.NumNodesMonitoredOnline > 0 && n.NumNodesMonitoredOnline <= n.NumNodesMonitored:
+	} else if n.NumNodesMonitoredOnline > 0 && n.NumNodesMonitoredOnline <= n.NumNodesMonitored {
 		n.Health = ModerateHealth
-	default:
+	} else {
 		n.Health = Dead
 	}
 }

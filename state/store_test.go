@@ -1,4 +1,4 @@
-package state_test
+package state
 
 import (
 	"fmt"
@@ -8,10 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cfg "github.com/tendermint/tendermint/config"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
+	cfg "github.com/orientwalt/tendermint/config"
+	dbm "github.com/orientwalt/tendermint/libs/db"
+	"github.com/orientwalt/tendermint/types"
 )
 
 func TestStoreLoadValidators(t *testing.T) {
@@ -20,9 +19,9 @@ func TestStoreLoadValidators(t *testing.T) {
 	vals := types.NewValidatorSet([]*types.Validator{val})
 
 	// 1) LoadValidators loads validators using a height where they were last changed
-	sm.SaveValidatorsInfo(stateDB, 1, 1, vals)
-	sm.SaveValidatorsInfo(stateDB, 2, 1, vals)
-	loadedVals, err := sm.LoadValidators(stateDB, 2)
+	saveValidatorsInfo(stateDB, 1, 1, vals)
+	saveValidatorsInfo(stateDB, 2, 1, vals)
+	loadedVals, err := LoadValidators(stateDB, 2)
 	require.NoError(t, err)
 	assert.NotZero(t, loadedVals.Size())
 
@@ -31,13 +30,13 @@ func TestStoreLoadValidators(t *testing.T) {
 	// TODO(melekes): REMOVE in 0.33 release
 	// https://github.com/tendermint/tendermint/issues/3543
 	// for releases prior to v0.31.4, it uses last height changed
-	valInfo := &sm.ValidatorsInfo{
-		LastHeightChanged: sm.ValSetCheckpointInterval,
+	valInfo := &ValidatorsInfo{
+		LastHeightChanged: valSetCheckpointInterval,
 	}
-	stateDB.Set(sm.CalcValidatorsKey(sm.ValSetCheckpointInterval), valInfo.Bytes())
+	stateDB.Set(calcValidatorsKey(valSetCheckpointInterval), valInfo.Bytes())
 	assert.NotPanics(t, func() {
-		sm.SaveValidatorsInfo(stateDB, sm.ValSetCheckpointInterval+1, 1, vals)
-		loadedVals, err := sm.LoadValidators(stateDB, sm.ValSetCheckpointInterval+1)
+		saveValidatorsInfo(stateDB, valSetCheckpointInterval+1, 1, vals)
+		loadedVals, err := LoadValidators(stateDB, valSetCheckpointInterval+1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -47,9 +46,9 @@ func TestStoreLoadValidators(t *testing.T) {
 	})
 	// ENDREMOVE
 
-	sm.SaveValidatorsInfo(stateDB, sm.ValSetCheckpointInterval, 1, vals)
+	saveValidatorsInfo(stateDB, valSetCheckpointInterval, 1, vals)
 
-	loadedVals, err = sm.LoadValidators(stateDB, sm.ValSetCheckpointInterval)
+	loadedVals, err = LoadValidators(stateDB, valSetCheckpointInterval)
 	require.NoError(t, err)
 	assert.NotZero(t, loadedVals.Size())
 }
@@ -61,20 +60,20 @@ func BenchmarkLoadValidators(b *testing.B) {
 	defer os.RemoveAll(config.RootDir)
 	dbType := dbm.DBBackendType(config.DBBackend)
 	stateDB := dbm.NewDB("state", dbType, config.DBDir())
-	state, err := sm.LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
+	state, err := LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
 	if err != nil {
 		b.Fatal(err)
 	}
 	state.Validators = genValSet(valSetSize)
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
-	sm.SaveState(stateDB, state)
+	SaveState(stateDB, state)
 
 	for i := 10; i < 10000000000; i *= 10 { // 10, 100, 1000, ...
-		sm.SaveValidatorsInfo(stateDB, int64(i), state.LastHeightValidatorsChanged, state.NextValidators)
+		saveValidatorsInfo(stateDB, int64(i), state.LastHeightValidatorsChanged, state.NextValidators)
 
 		b.Run(fmt.Sprintf("height=%d", i), func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
-				_, err := sm.LoadValidators(stateDB, int64(i))
+				_, err := LoadValidators(stateDB, int64(i))
 				if err != nil {
 					b.Fatal(err)
 				}

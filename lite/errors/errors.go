@@ -3,7 +3,7 @@ package errors
 import (
 	"fmt"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	cmn "github.com/orientwalt/tendermint/libs/common"
 )
 
 //----------------------------------------

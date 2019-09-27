@@ -5,9 +5,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/privval"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/libs/log"
+	"github.com/orientwalt/tendermint/privval"
 )
 
 // ResetAllCmd removes the database of this Tendermint core
@@ -16,12 +16,6 @@ var ResetAllCmd = &cobra.Command{
 	Use:   "unsafe_reset_all",
 	Short: "(unsafe) Remove all the data and WAL, reset this node's validator to genesis state",
 	Run:   resetAll,
-}
-
-var keepAddrBook bool
-
-func init() {
-	ResetAllCmd.Flags().BoolVar(&keepAddrBook, "keep-addr-book", false, "Keep the address book intact")
 }
 
 // ResetPrivValidatorCmd resets the private validator files.
@@ -47,11 +41,7 @@ func resetPrivValidator(cmd *cobra.Command, args []string) {
 // ResetAll removes address book files plus all data, and resets the privValdiator data.
 // Exported so other CLI tools can use it.
 func ResetAll(dbDir, addrBookFile, privValKeyFile, privValStateFile string, logger log.Logger) {
-	if keepAddrBook {
-		logger.Info("The address book remains intact")
-	} else {
-		removeAddrBook(addrBookFile, logger)
-	}
+	removeAddrBook(addrBookFile, logger)
 	if err := os.RemoveAll(dbDir); err == nil {
 		logger.Info("Removed all blockchain history", "dir", dbDir)
 	} else {

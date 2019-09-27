@@ -65,10 +65,7 @@ begin.
 After `Commit`, CheckTx is run again on all transactions that remain in the
 node's local mempool after filtering those included in the block. To prevent the
 mempool from rechecking all transactions every time a block is committed, set
-the configuration option `mempool.recheck=false`. As of Tendermint v0.32.1,
-an additional `Type` parameter is made available to the CheckTx function that 
-indicates whether an incoming transaction is new (`CheckTxType_New`), or a
-recheck (`CheckTxType_Recheck`).
+the configuration option `mempool.recheck=false`.
 
 Finally, the mempool will unlock and new transactions can be processed through CheckTx again.
 
@@ -268,7 +265,7 @@ This is enforced by Tendermint consensus.
 If a block includes evidence older than this, the block will be rejected
 (validators won't vote for it).
 
-Must have `MaxAge > 0`.
+Must have `0 < MaxAge`.
 
 ### Updates
 

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
-	"github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/log"
+	abcicli "github.com/orientwalt/tendermint/abci/client"
+	"github.com/orientwalt/tendermint/abci/types"
+	"github.com/orientwalt/tendermint/libs/log"
 )
 
 func startClient(abciType string) abcicli.Client {
@@ -43,7 +43,7 @@ func commit(client abcicli.Client, hashExp []byte) {
 }
 
 func deliverTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []byte) {
-	res, err := client.DeliverTxSync(types.RequestDeliverTx{Tx: txBytes})
+	res, err := client.DeliverTxSync(txBytes)
 	if err != nil {
 		panicf("client error: %v", err)
 	}

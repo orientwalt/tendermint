@@ -7,10 +7,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/libs/cli"
-	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
-	"github.com/tendermint/tendermint/libs/log"
+	cfg "github.com/orientwalt/tendermint/config"
+	"github.com/orientwalt/tendermint/libs/cli"
+	tmflags "github.com/orientwalt/tendermint/libs/cli/flags"
+	"github.com/orientwalt/tendermint/libs/log"
 )
 
 var (

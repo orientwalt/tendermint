@@ -174,7 +174,9 @@ where example.file looks something like:
     info
 `,
 	Args: cobra.ExactArgs(0),
-	RunE: cmdBatch,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdBatch(cmd, args)
+	},
 }
 
 var consoleCmd = &cobra.Command{
@@ -187,7 +189,9 @@ without opening a new connection each time
 `,
 	Args:      cobra.ExactArgs(0),
 	ValidArgs: []string{"echo", "info", "set_option", "deliver_tx", "check_tx", "commit", "query"},
-	RunE:      cmdConsole,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdConsole(cmd, args)
+	},
 }
 
 var echoCmd = &cobra.Command{
@@ -195,21 +199,27 @@ var echoCmd = &cobra.Command{
 	Short: "have the application echo a message",
 	Long:  "have the application echo a message",
 	Args:  cobra.ExactArgs(1),
-	RunE:  cmdEcho,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdEcho(cmd, args)
+	},
 }
 var infoCmd = &cobra.Command{
 	Use:   "info",
 	Short: "get some info about the application",
 	Long:  "get some info about the application",
 	Args:  cobra.ExactArgs(0),
-	RunE:  cmdInfo,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdInfo(cmd, args)
+	},
 }
 var setOptionCmd = &cobra.Command{
 	Use:   "set_option",
 	Short: "set an option on the application",
 	Long:  "set an option on the application",
 	Args:  cobra.ExactArgs(2),
-	RunE:  cmdSetOption,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdSetOption(cmd, args)
+	},
 }
 
 var deliverTxCmd = &cobra.Command{
@@ -217,7 +227,9 @@ var deliverTxCmd = &cobra.Command{
 	Short: "deliver a new transaction to the application",
 	Long:  "deliver a new transaction to the application",
 	Args:  cobra.ExactArgs(1),
-	RunE:  cmdDeliverTx,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdDeliverTx(cmd, args)
+	},
 }
 
 var checkTxCmd = &cobra.Command{
@@ -225,7 +237,9 @@ var checkTxCmd = &cobra.Command{
 	Short: "validate a transaction",
 	Long:  "validate a transaction",
 	Args:  cobra.ExactArgs(1),
-	RunE:  cmdCheckTx,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdCheckTx(cmd, args)
+	},
 }
 
 var commitCmd = &cobra.Command{
@@ -233,7 +247,9 @@ var commitCmd = &cobra.Command{
 	Short: "commit the application state and return the Merkle root hash",
 	Long:  "commit the application state and return the Merkle root hash",
 	Args:  cobra.ExactArgs(0),
-	RunE:  cmdCommit,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdCommit(cmd, args)
+	},
 }
 
 var versionCmd = &cobra.Command{
@@ -252,7 +268,9 @@ var queryCmd = &cobra.Command{
 	Short: "query the application state",
 	Long:  "query the application state",
 	Args:  cobra.ExactArgs(1),
-	RunE:  cmdQuery,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdQuery(cmd, args)
+	},
 }
 
 var counterCmd = &cobra.Command{
@@ -260,7 +278,9 @@ var counterCmd = &cobra.Command{
 	Short: "ABCI demo example",
 	Long:  "ABCI demo example",
 	Args:  cobra.ExactArgs(0),
-	RunE:  cmdCounter,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdCounter(cmd, args)
+	},
 }
 
 var kvstoreCmd = &cobra.Command{
@@ -268,7 +288,9 @@ var kvstoreCmd = &cobra.Command{
 	Short: "ABCI demo example",
 	Long:  "ABCI demo example",
 	Args:  cobra.ExactArgs(0),
-	RunE:  cmdKVStore,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdKVStore(cmd, args)
+	},
 }
 
 var testCmd = &cobra.Command{
@@ -276,7 +298,9 @@ var testCmd = &cobra.Command{
 	Short: "run integration tests",
 	Long:  "run integration tests",
 	Args:  cobra.ExactArgs(0),
-	RunE:  cmdTest,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdTest(cmd, args)
+	},
 }
 
 // Generates new Args array based off of previous call args to maintain flag persistence
@@ -332,18 +356,16 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 
 func cmdBatch(cmd *cobra.Command, args []string) error {
 	bufReader := bufio.NewReader(os.Stdin)
-LOOP:
 	for {
 
 		line, more, err := bufReader.ReadLine()
-		switch {
-		case more:
+		if more {
 			return errors.New("Input line is too long")
-		case err == io.EOF:
-			break LOOP
-		case len(line) == 0:
+		} else if err == io.EOF {
+			break
+		} else if len(line) == 0 {
 			continue
-		case err != nil:
+		} else if err != nil {
 			return err
 		}
 
@@ -397,7 +419,7 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 			}
 
 			// otherwise, we need to skip the next one too
-			i++
+			i += 1
 			continue
 		}
 
@@ -524,7 +546,7 @@ func cmdDeliverTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := client.DeliverTxSync(types.RequestDeliverTx{Tx: txBytes})
+	res, err := client.DeliverTxSync(txBytes)
 	if err != nil {
 		return err
 	}
@@ -550,7 +572,7 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := client.CheckTxSync(types.RequestCheckTx{Tx: txBytes})
+	res, err := client.CheckTxSync(txBytes)
 	if err != nil {
 		return err
 	}

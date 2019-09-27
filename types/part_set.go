@@ -8,8 +8,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/tendermint/crypto/merkle"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/crypto/merkle"
+	cmn "github.com/orientwalt/tendermint/libs/common"
 )
 
 var (
@@ -226,7 +226,7 @@ func (ps *PartSet) IsComplete() bool {
 
 func (ps *PartSet) GetReader() io.Reader {
 	if !ps.IsComplete() {
-		panic("Cannot GetReader() on incomplete PartSet")
+		cmn.PanicSanity("Cannot GetReader() on incomplete PartSet")
 	}
 	return NewPartSetReader(ps.parts)
 }

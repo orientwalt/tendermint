@@ -1,4 +1,4 @@
-package state_test
+package state
 
 import (
 	"os"
@@ -7,10 +7,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
+	"github.com/orientwalt/tendermint/crypto/ed25519"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	dbm "github.com/orientwalt/tendermint/libs/db"
+	"github.com/orientwalt/tendermint/types"
+	tmtime "github.com/orientwalt/tendermint/types/time"
 )
 
 func TestTxFilter(t *testing.T) {
@@ -33,14 +34,24 @@ func TestTxFilter(t *testing.T) {
 
 	for i, tc := range testCases {
 		stateDB := dbm.NewDB("state", "memdb", os.TempDir())
-		state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
+		state, err := LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 		require.NoError(t, err)
 
-		f := sm.TxPreCheck(state)
+		f := TxPreCheck(state)
 		if tc.isErr {
 			assert.NotNil(t, f(tc.tx), "#%v", i)
 		} else {
 			assert.Nil(t, f(tc.tx), "#%v", i)
 		}
+	}
+}
+
+func randomGenesisDoc() *types.GenesisDoc {
+	pubkey := ed25519.GenPrivKey().PubKey()
+	return &types.GenesisDoc{
+		GenesisTime:     tmtime.Now(),
+		ChainID:         "abc",
+		Validators:      []types.GenesisValidator{{pubkey.Address(), pubkey, 10, "myval"}},
+		ConsensusParams: types.DefaultConsensusParams(),
 	}
 }

@@ -13,14 +13,14 @@ import (
 
 	"golang.org/x/net/context"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/log"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/libs/log"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
-	"github.com/tendermint/tendermint/abci/example/code"
-	"github.com/tendermint/tendermint/abci/example/kvstore"
-	abciserver "github.com/tendermint/tendermint/abci/server"
-	"github.com/tendermint/tendermint/abci/types"
+	abcicli "github.com/orientwalt/tendermint/abci/client"
+	"github.com/orientwalt/tendermint/abci/example/code"
+	"github.com/orientwalt/tendermint/abci/example/kvstore"
+	abciserver "github.com/orientwalt/tendermint/abci/server"
+	"github.com/orientwalt/tendermint/abci/types"
 )
 
 func TestKVStore(t *testing.T) {
@@ -87,7 +87,7 @@ func testStream(t *testing.T, app types.Application) {
 	// Write requests
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		// Send request
-		reqRes := client.DeliverTxAsync(types.RequestDeliverTx{Tx: []byte("test")})
+		reqRes := client.DeliverTxAsync([]byte("test"))
 		_ = reqRes
 		// check err ?
 
@@ -107,7 +107,7 @@ func testStream(t *testing.T, app types.Application) {
 //-------------------------
 // test grpc
 
-func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
+func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
 	return cmn.Connect(addr)
 }
 
@@ -123,7 +123,7 @@ func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
 	defer server.Stop()
 
 	// Connect to the socket
-	conn, err := grpc.Dial("unix://test.sock", grpc.WithInsecure(), grpc.WithContextDialer(dialerFunc))
+	conn, err := grpc.Dial("unix://test.sock", grpc.WithInsecure(), grpc.WithDialer(dialerFunc))
 	if err != nil {
 		t.Fatalf("Error dialing GRPC server: %v", err.Error())
 	}

@@ -9,3 +9,4 @@ RUN make get_tools
 
 COPY . /go/src/github.com/tendermint/tools/tm-monitor
 
+RUN make get_vendor_deps

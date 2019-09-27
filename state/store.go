@@ -3,10 +3,10 @@ package state
 import (
 	"fmt"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
+	abci "github.com/orientwalt/tendermint/abci/types"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	dbm "github.com/orientwalt/tendermint/libs/db"
+	"github.com/orientwalt/tendermint/types"
 )
 
 const (
@@ -70,6 +70,10 @@ func LoadState(db dbm.DB) State {
 	return loadState(db, stateKey)
 }
 
+func LoadPreState(db dbm.DB) State {
+	return loadState(db, statePreKey)
+}
+
 func loadState(db dbm.DB, key []byte) (state State) {
 	buf := db.Get(key)
 	if len(buf) == 0 {
@@ -115,9 +119,9 @@ func saveState(db dbm.DB, state State, key []byte) {
 // of the various ABCI calls during block processing.
 // It is persisted to disk for each height before calling Commit.
 type ABCIResponses struct {
-	DeliverTx  []*abci.ResponseDeliverTx `json:"deliver_tx"`
-	EndBlock   *abci.ResponseEndBlock    `json:"end_block"`
-	BeginBlock *abci.ResponseBeginBlock  `json:"begin_block"`
+	DeliverTx  []*abci.ResponseDeliverTx
+	EndBlock   *abci.ResponseEndBlock
+	BeginBlock *abci.ResponseBeginBlock
 }
 
 // NewABCIResponses returns a new ABCIResponses

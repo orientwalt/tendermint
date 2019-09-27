@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
-	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	tmtime "github.com/tendermint/tendermint/types/time"
+	"github.com/orientwalt/tendermint/crypto"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	tst "github.com/orientwalt/tendermint/libs/test"
+	tmtime "github.com/orientwalt/tendermint/types/time"
 )
 
 // NOTE: privValidators are in order
@@ -491,7 +490,7 @@ func TestMakeCommit(t *testing.T) {
 	}
 
 	// MakeCommit should fail.
-	assert.Panics(t, func() { voteSet.MakeCommit() }, "Doesn't have +2/3 majority")
+	tst.AssertPanics(t, "Doesn't have +2/3 majority", func() { voteSet.MakeCommit() })
 
 	// 7th voted for some other block.
 	{

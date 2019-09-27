@@ -4,8 +4,8 @@ import (
 	"os"
 	"runtime/pprof"
 
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	ctypes "github.com/orientwalt/tendermint/rpc/core/types"
+	rpctypes "github.com/orientwalt/tendermint/rpc/lib/types"
 )
 
 // UnsafeFlushMempool removes all transactions from the mempool.

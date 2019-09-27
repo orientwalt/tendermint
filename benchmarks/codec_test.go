@@ -6,15 +6,15 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 
-	proto "github.com/tendermint/tendermint/benchmarks/proto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/p2p"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	proto "github.com/orientwalt/tendermint/benchmarks/proto"
+	"github.com/orientwalt/tendermint/crypto/ed25519"
+	"github.com/orientwalt/tendermint/p2p"
+	ctypes "github.com/orientwalt/tendermint/rpc/core/types"
 )
 
 func testNodeInfo(id p2p.ID) p2p.DefaultNodeInfo {
 	return p2p.DefaultNodeInfo{
-		ProtocolVersion: p2p.ProtocolVersion{P2P: 1, Block: 2, App: 3},
+		ProtocolVersion: p2p.ProtocolVersion{1, 2, 3},
 		ID_:             id,
 		Moniker:         "SOMENAME",
 		Network:         "SOMENAME",

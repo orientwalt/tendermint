@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/tendermint/tendermint/abci/example/code"
-	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/version"
-	dbm "github.com/tendermint/tm-db"
+	"github.com/orientwalt/tendermint/abci/example/code"
+	"github.com/orientwalt/tendermint/abci/types"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	dbm "github.com/orientwalt/tendermint/libs/db"
+	"github.com/orientwalt/tendermint/version"
 )
 
 var (
@@ -76,32 +76,25 @@ func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.Respon
 }
 
 // tx is either "key=value" or just arbitrary bytes
-func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
+func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	var key, value []byte
-	parts := bytes.Split(req.Tx, []byte("="))
+	parts := bytes.Split(tx, []byte("="))
 	if len(parts) == 2 {
 		key, value = parts[0], parts[1]
 	} else {
-		key, value = req.Tx, req.Tx
+		key, value = tx, tx
 	}
-
 	app.state.db.Set(prefixKey(key), value)
 	app.state.Size += 1
 
-	events := []types.Event{
-		{
-			Type: "app",
-			Attributes: []cmn.KVPair{
-				{Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko")},
-				{Key: []byte("key"), Value: key},
-			},
-		},
+	tags := []cmn.KVPair{
+		{Key: []byte("app.creator"), Value: []byte("Cosmoshi Netowoko")},
+		{Key: []byte("app.key"), Value: key},
 	}
-
-	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Events: events}
+	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Tags: tags}
 }
 
-func (app *KVStoreApplication) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
+func (app *KVStoreApplication) CheckTx(tx []byte) types.ResponseCheckTx {
 	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
 }
 
@@ -115,7 +108,6 @@ func (app *KVStoreApplication) Commit() types.ResponseCommit {
 	return types.ResponseCommit{Data: appHash}
 }
 
-// Returns an associated value or nil if missing.
 func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
 	if reqQuery.Prove {
 		value := app.state.db.Get(prefixKey(reqQuery.Data))

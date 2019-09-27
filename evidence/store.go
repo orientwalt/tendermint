@@ -3,8 +3,8 @@ package evidence
 import (
 	"fmt"
 
-	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
+	dbm "github.com/orientwalt/tendermint/libs/db"
+	"github.com/orientwalt/tendermint/types"
 )
 
 /*

@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	amino "github.com/tendermint/go-amino"
-	"github.com/tendermint/tendermint/libs/log"
+	"github.com/orientwalt/tendermint/libs/log"
 )
 
 const maxPingPongPacketSize = 1024 // bytes
@@ -57,8 +57,7 @@ func TestMConnectionSendFlushStop(t *testing.T) {
 		msgB := make([]byte, aminoMsgLength)
 		_, err := server.Read(msgB)
 		if err != nil {
-			t.Error(err)
-			return
+			t.Fatal(err)
 		}
 		errCh <- err
 	}()

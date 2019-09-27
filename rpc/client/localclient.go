@@ -6,15 +6,15 @@ import (
 
 	"github.com/pkg/errors"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/log"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
-	nm "github.com/tendermint/tendermint/node"
-	"github.com/tendermint/tendermint/rpc/core"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
-	"github.com/tendermint/tendermint/types"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/libs/log"
+	tmpubsub "github.com/orientwalt/tendermint/libs/pubsub"
+	tmquery "github.com/orientwalt/tendermint/libs/pubsub/query"
+	nm "github.com/orientwalt/tendermint/node"
+	"github.com/orientwalt/tendermint/rpc/core"
+	ctypes "github.com/orientwalt/tendermint/rpc/core/types"
+	rpctypes "github.com/orientwalt/tendermint/rpc/lib/types"
+	"github.com/orientwalt/tendermint/types"
 )
 
 /*
@@ -157,10 +157,6 @@ func (c *Local) TxSearch(query string, prove bool, page, perPage int) (*ctypes.R
 	return core.TxSearch(c.ctx, query, prove, page, perPage)
 }
 
-func (c *Local) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
-	return core.BroadcastEvidence(c.ctx, ev)
-}
-
 func (c *Local) Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
 	q, err := tmquery.New(query)
 	if err != nil {
@@ -186,7 +182,7 @@ func (c *Local) eventsRoutine(sub types.Subscription, subscriber string, q tmpub
 	for {
 		select {
 		case msg := <-sub.Out():
-			result := ctypes.ResultEvent{Query: q.String(), Data: msg.Data(), Events: msg.Events()}
+			result := ctypes.ResultEvent{Query: q.String(), Data: msg.Data(), Tags: msg.Tags()}
 			if cap(outc) == 0 {
 				outc <- result
 			} else {

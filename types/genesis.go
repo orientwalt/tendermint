@@ -7,9 +7,9 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	tmtime "github.com/tendermint/tendermint/types/time"
+	"github.com/orientwalt/tendermint/crypto"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	tmtime "github.com/orientwalt/tendermint/types/time"
 )
 
 const (
@@ -72,8 +72,10 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 
 	if genDoc.ConsensusParams == nil {
 		genDoc.ConsensusParams = DefaultConsensusParams()
-	} else if err := genDoc.ConsensusParams.Validate(); err != nil {
-		return err
+	} else {
+		if err := genDoc.ConsensusParams.Validate(); err != nil {
+			return err
+		}
 	}
 
 	for i, v := range genDoc.Validators {

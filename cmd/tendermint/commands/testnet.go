@@ -8,30 +8,25 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
-	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
+	cfg "github.com/orientwalt/tendermint/config"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/p2p"
+	"github.com/orientwalt/tendermint/privval"
+	"github.com/orientwalt/tendermint/types"
+	tmtime "github.com/orientwalt/tendermint/types/time"
 )
 
 var (
 	nValidators    int
 	nNonValidators int
-	configFile     string
 	outputDir      string
 	nodeDirPrefix  string
 
 	populatePersistentPeers bool
 	hostnamePrefix          string
-	hostnameSuffix          string
 	startingIPAddress       string
-	hostnames               []string
 	p2pPort                 int
-	randomMonikers          bool
 )
 
 const (
@@ -41,8 +36,6 @@ const (
 func init() {
 	TestnetFilesCmd.Flags().IntVar(&nValidators, "v", 4,
 		"Number of validators to initialize the testnet with")
-	TestnetFilesCmd.Flags().StringVar(&configFile, "config", "",
-		"Config file to use (note some options may be overwritten)")
 	TestnetFilesCmd.Flags().IntVar(&nNonValidators, "n", 0,
 		"Number of non-validators to initialize the testnet with")
 	TestnetFilesCmd.Flags().StringVar(&outputDir, "o", "./mytestnet",
@@ -53,17 +46,11 @@ func init() {
 	TestnetFilesCmd.Flags().BoolVar(&populatePersistentPeers, "populate-persistent-peers", true,
 		"Update config of each node with the list of persistent peers build using either hostname-prefix or starting-ip-address")
 	TestnetFilesCmd.Flags().StringVar(&hostnamePrefix, "hostname-prefix", "node",
-		"Hostname prefix (\"node\" results in persistent peers list ID0@node0:26656, ID1@node1:26656, ...)")
-	TestnetFilesCmd.Flags().StringVar(&hostnameSuffix, "hostname-suffix", "",
-		"Hostname suffix (\".xyz.com\" results in persistent peers list ID0@node0.xyz.com:26656, ID1@node1.xyz.com:26656, ...)")
+		"Hostname prefix (node results in persistent peers list ID0@node0:26656, ID1@node1:26656, ...)")
 	TestnetFilesCmd.Flags().StringVar(&startingIPAddress, "starting-ip-address", "",
-		"Starting IP address (\"192.168.0.1\" results in persistent peers list ID0@192.168.0.1:26656, ID1@192.168.0.2:26656, ...)")
-	TestnetFilesCmd.Flags().StringArrayVar(&hostnames, "hostname", []string{},
-		"Manually override all hostnames of validators and non-validators (use --hostname multiple times for multiple hosts)")
+		"Starting IP address (192.168.0.1 results in persistent peers list ID0@192.168.0.1:26656, ID1@192.168.0.2:26656, ...)")
 	TestnetFilesCmd.Flags().IntVar(&p2pPort, "p2p-port", 26656,
 		"P2P Port")
-	TestnetFilesCmd.Flags().BoolVar(&randomMonikers, "random-monikers", false,
-		"Randomize the moniker for each generated node")
 }
 
 // TestnetFilesCmd allows initialisation of files for a Tendermint testnet.
@@ -85,29 +72,7 @@ Example:
 }
 
 func testnetFiles(cmd *cobra.Command, args []string) error {
-	if len(hostnames) > 0 && len(hostnames) != (nValidators+nNonValidators) {
-		return fmt.Errorf(
-			"testnet needs precisely %d hostnames (number of validators plus non-validators) if --hostname parameter is used",
-			nValidators+nNonValidators,
-		)
-	}
-
 	config := cfg.DefaultConfig()
-
-	// overwrite default config if set and valid
-	if configFile != "" {
-		viper.SetConfigFile(configFile)
-		if err := viper.ReadInConfig(); err != nil {
-			return err
-		}
-		if err := viper.Unmarshal(config); err != nil {
-			return err
-		}
-		if err := config.ValidateBasic(); err != nil {
-			return err
-		}
-	}
-
 	genVals := make([]types.GenesisValidator, nValidators)
 
 	for i := 0; i < nValidators; i++ {
@@ -161,10 +126,9 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 
 	// Generate genesis doc from generated validators
 	genDoc := &types.GenesisDoc{
-		ChainID:         "chain-" + cmn.RandStr(6),
-		ConsensusParams: types.DefaultConsensusParams(),
-		GenesisTime:     tmtime.Now(),
-		Validators:      genVals,
+		GenesisTime: tmtime.Now(),
+		ChainID:     "chain-" + cmn.RandStr(6),
+		Validators:  genVals,
 	}
 
 	// Write genesis file.
@@ -198,7 +162,6 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		if populatePersistentPeers {
 			config.P2P.PersistentPeers = persistentPeers
 		}
-		config.Moniker = moniker(i)
 
 		cfg.WriteConfigFile(filepath.Join(nodeDir, "config", "config.toml"), config)
 	}
@@ -208,23 +171,21 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 }
 
 func hostnameOrIP(i int) string {
-	if len(hostnames) > 0 && i < len(hostnames) {
-		return hostnames[i]
-	}
-	if startingIPAddress == "" {
-		return fmt.Sprintf("%s%d%s", hostnamePrefix, i, hostnameSuffix)
-	}
-	ip := net.ParseIP(startingIPAddress)
-	ip = ip.To4()
-	if ip == nil {
-		fmt.Printf("%v: non ipv4 address\n", startingIPAddress)
-		os.Exit(1)
+	if startingIPAddress != "" {
+		ip := net.ParseIP(startingIPAddress)
+		ip = ip.To4()
+		if ip == nil {
+			fmt.Printf("%v: non ipv4 address\n", startingIPAddress)
+			os.Exit(1)
+		}
+
+		for j := 0; j < i; j++ {
+			ip[3]++
+		}
+		return ip.String()
 	}
 
-	for j := 0; j < i; j++ {
-		ip[3]++
-	}
-	return ip.String()
+	return fmt.Sprintf("%s%d", hostnamePrefix, i)
 }
 
 func persistentPeersString(config *cfg.Config) (string, error) {
@@ -239,21 +200,4 @@ func persistentPeersString(config *cfg.Config) (string, error) {
 		persistentPeers[i] = p2p.IDAddressString(nodeKey.ID(), fmt.Sprintf("%s:%d", hostnameOrIP(i), p2pPort))
 	}
 	return strings.Join(persistentPeers, ","), nil
-}
-
-func moniker(i int) string {
-	if randomMonikers {
-		return randomMoniker()
-	}
-	if len(hostnames) > 0 && i < len(hostnames) {
-		return hostnames[i]
-	}
-	if startingIPAddress == "" {
-		return fmt.Sprintf("%s%d%s", hostnamePrefix, i, hostnameSuffix)
-	}
-	return randomMoniker()
-}
-
-func randomMoniker() string {
-	return cmn.HexBytes(cmn.RandBytes(8)).String()
 }

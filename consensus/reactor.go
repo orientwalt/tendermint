@@ -9,14 +9,14 @@ import (
 	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
-	cstypes "github.com/tendermint/tendermint/consensus/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	tmevents "github.com/tendermint/tendermint/libs/events"
-	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/p2p"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
+	cstypes "github.com/orientwalt/tendermint/consensus/types"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	tmevents "github.com/orientwalt/tendermint/libs/events"
+	"github.com/orientwalt/tendermint/libs/log"
+	"github.com/orientwalt/tendermint/p2p"
+	sm "github.com/orientwalt/tendermint/state"
+	"github.com/orientwalt/tendermint/types"
+	tmtime "github.com/orientwalt/tendermint/types/time"
 )
 
 const (
@@ -116,13 +116,8 @@ func (conR *ConsensusReactor) SwitchToConsensus(state sm.State, blocksSynced int
 	}
 	err := conR.conS.Start()
 	if err != nil {
-		panic(fmt.Sprintf(`Failed to start consensus state: %v
-
-conS:
-%+v
-
-conR:
-%+v`, err, conR.conS, conR))
+		conR.Logger.Error("Error starting conS", "err", err)
+		return
 	}
 }
 
@@ -160,24 +155,16 @@ func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 	}
 }
 
-// InitPeer implements Reactor by creating a state for the peer.
-func (conR *ConsensusReactor) InitPeer(peer p2p.Peer) p2p.Peer {
-	peerState := NewPeerState(peer).SetLogger(conR.Logger)
-	peer.Set(types.PeerStateKey, peerState)
-	return peer
-}
-
-// AddPeer implements Reactor by spawning multiple gossiping goroutines for the
-// peer.
+// AddPeer implements Reactor
 func (conR *ConsensusReactor) AddPeer(peer p2p.Peer) {
 	if !conR.IsRunning() {
 		return
 	}
 
-	peerState, ok := peer.Get(types.PeerStateKey).(*PeerState)
-	if !ok {
-		panic(fmt.Sprintf("peer %v has no state", peer))
-	}
+	// Create peerState for peer
+	peerState := NewPeerState(peer).SetLogger(conR.Logger)
+	peer.Set(types.PeerStateKey, peerState)
+
 	// Begin routines for this peer.
 	go conR.gossipDataRoutine(peer, peerState)
 	go conR.gossipVotesRoutine(peer, peerState)
@@ -190,7 +177,7 @@ func (conR *ConsensusReactor) AddPeer(peer p2p.Peer) {
 	}
 }
 
-// RemovePeer is a noop.
+// RemovePeer implements Reactor
 func (conR *ConsensusReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	if !conR.IsRunning() {
 		return
@@ -356,6 +343,10 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	default:
 		conR.Logger.Error(fmt.Sprintf("Unknown chId %X", chID))
 	}
+
+	if err != nil {
+		conR.Logger.Error("Error in Receive()", "err", err)
+	}
 }
 
 // SetEventBus sets event bus.
@@ -500,7 +491,7 @@ OUTER_LOOP:
 			if prs.ProposalBlockParts == nil {
 				blockMeta := conR.conS.blockStore.LoadBlockMeta(prs.Height)
 				if blockMeta == nil {
-					panic(fmt.Sprintf("Failed to load block %d when blockStore is at %d",
+					cmn.PanicCrisis(fmt.Sprintf("Failed to load block %d when blockStore is at %d",
 						prs.Height, conR.conS.blockStore.Height()))
 				}
 				ps.InitProposalBlockParts(blockMeta.BlockID.PartsHeader)
@@ -1119,7 +1110,7 @@ func (ps *PeerState) ensureCatchupCommitRound(height int64, round int, numValida
 		NOTE: This is wrong, 'round' could change.
 		e.g. if orig round is not the same as block LastCommit round.
 		if ps.CatchupCommitRound != -1 && ps.CatchupCommitRound != round {
-			panic(fmt.Sprintf("Conflicting CatchupCommitRound. Height: %v, Orig: %v, New: %v", height, ps.CatchupCommitRound, round))
+			cmn.PanicSanity(fmt.Sprintf("Conflicting CatchupCommitRound. Height: %v, Orig: %v, New: %v", height, ps.CatchupCommitRound, round))
 		}
 	*/
 	if ps.PRS.CatchupCommitRound == round {

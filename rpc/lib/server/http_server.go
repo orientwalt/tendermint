@@ -14,8 +14,8 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/net/netutil"
 
-	"github.com/tendermint/tendermint/libs/log"
-	types "github.com/tendermint/tendermint/rpc/lib/types"
+	"github.com/orientwalt/tendermint/libs/log"
+	types "github.com/orientwalt/tendermint/rpc/lib/types"
 )
 
 // Config is a RPC server configuration.
@@ -26,11 +26,6 @@ type Config struct {
 	ReadTimeout time.Duration
 	// mirrors http.Server#WriteTimeout
 	WriteTimeout time.Duration
-	// MaxBodyBytes controls the maximum number of bytes the
-	// server will read parsing the request body.
-	MaxBodyBytes int64
-	// mirrors http.Server#MaxHeaderBytes
-	MaxHeaderBytes int
 }
 
 // DefaultConfig returns a default configuration.
@@ -39,10 +34,17 @@ func DefaultConfig() *Config {
 		MaxOpenConnections: 0, // unlimited
 		ReadTimeout:        10 * time.Second,
 		WriteTimeout:       10 * time.Second,
-		MaxBodyBytes:       int64(1000000), // 1MB
-		MaxHeaderBytes:     1 << 20,        // same as the net/http default
 	}
 }
+
+const (
+	// maxBodyBytes controls the maximum number of bytes the
+	// server will read parsing the request body.
+	maxBodyBytes = int64(1000000) // 1MB
+
+	// same as the net/http default
+	maxHeaderBytes = 1 << 20
+)
 
 // StartHTTPServer takes a listener and starts an HTTP server with the given handler.
 // It wraps handler with RecoverAndLogHandler.
@@ -50,10 +52,10 @@ func DefaultConfig() *Config {
 func StartHTTPServer(listener net.Listener, handler http.Handler, logger log.Logger, config *Config) error {
 	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listener.Addr()))
 	s := &http.Server{
-		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
+		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
 		ReadTimeout:    config.ReadTimeout,
 		WriteTimeout:   config.WriteTimeout,
-		MaxHeaderBytes: config.MaxHeaderBytes,
+		MaxHeaderBytes: maxHeaderBytes,
 	}
 	err := s.Serve(listener)
 	logger.Info("RPC HTTP server stopped", "err", err)
@@ -73,10 +75,10 @@ func StartHTTPAndTLSServer(
 	logger.Info(fmt.Sprintf("Starting RPC HTTPS server on %s (cert: %q, key: %q)",
 		listener.Addr(), certFile, keyFile))
 	s := &http.Server{
-		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
+		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
 		ReadTimeout:    config.ReadTimeout,
 		WriteTimeout:   config.WriteTimeout,
-		MaxHeaderBytes: config.MaxHeaderBytes,
+		MaxHeaderBytes: maxHeaderBytes,
 	}
 	err := s.ServeTLS(listener, certFile, keyFile)
 
@@ -96,9 +98,7 @@ func WriteRPCResponseHTTPError(
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(httpCode)
-	if _, err := w.Write(jsonBytes); err != nil {
-		panic(err)
-	}
+	w.Write(jsonBytes) // nolint: errcheck, gas
 }
 
 func WriteRPCResponseHTTP(w http.ResponseWriter, res types.RPCResponse) {
@@ -108,33 +108,12 @@ func WriteRPCResponseHTTP(w http.ResponseWriter, res types.RPCResponse) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
-	if _, err := w.Write(jsonBytes); err != nil {
-		panic(err)
-	}
-}
-
-// WriteRPCResponseArrayHTTP will do the same as WriteRPCResponseHTTP, except it
-// can write arrays of responses for batched request/response interactions via
-// the JSON RPC.
-func WriteRPCResponseArrayHTTP(w http.ResponseWriter, res []types.RPCResponse) {
-	if len(res) == 1 {
-		WriteRPCResponseHTTP(w, res[0])
-	} else {
-		jsonBytes, err := json.MarshalIndent(res, "", "  ")
-		if err != nil {
-			panic(err)
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(200)
-		if _, err := w.Write(jsonBytes); err != nil {
-			panic(err)
-		}
-	}
+	w.Write(jsonBytes) // nolint: errcheck, gas
 }
 
 //-----------------------------------------------------------------------------
 
-// RecoverAndLogHandler wraps an HTTP handler, adding error logging.
+// Wraps an HTTP handler, adding error logging.
 // If the inner function panics, the outer function recovers, logs, sends an
 // HTTP 500 error response.
 func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler {
@@ -212,14 +191,14 @@ func Listen(addr string, config *Config) (listener net.Listener, err error) {
 	parts := strings.SplitN(addr, "://", 2)
 	if len(parts) != 2 {
 		return nil, errors.Errorf(
-			"invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)",
+			"Invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)",
 			addr,
 		)
 	}
 	proto, addr := parts[0], parts[1]
 	listener, err = net.Listen(proto, addr)
 	if err != nil {
-		return nil, errors.Errorf("failed to listen on %v: %v", addr, err)
+		return nil, errors.Errorf("Failed to listen on %v: %v", addr, err)
 	}
 	if config.MaxOpenConnections > 0 {
 		listener = netutil.LimitListener(listener, config.MaxOpenConnections)

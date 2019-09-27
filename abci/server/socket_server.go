@@ -7,8 +7,8 @@ import (
 	"net"
 	"sync"
 
-	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/abci/types"
+	cmn "github.com/orientwalt/tendermint/libs/common"
 )
 
 // var maxNumberConnections = 2
@@ -127,12 +127,11 @@ func (s *SocketServer) acceptConnectionsRoutine() {
 
 func (s *SocketServer) waitForClose(closeConn chan error, connID int) {
 	err := <-closeConn
-	switch {
-	case err == io.EOF:
+	if err == io.EOF {
 		s.Logger.Error("Connection was closed by client")
-	case err != nil:
+	} else if err != nil {
 		s.Logger.Error("Connection error", "error", err)
-	default:
+	} else {
 		// never happens
 		s.Logger.Error("Connection was closed.")
 	}
@@ -147,16 +146,6 @@ func (s *SocketServer) waitForClose(closeConn chan error, connID int) {
 func (s *SocketServer) handleRequests(closeConn chan error, conn net.Conn, responses chan<- *types.Response) {
 	var count int
 	var bufReader = bufio.NewReader(conn)
-
-	defer func() {
-		// make sure to recover from any app-related panics to allow proper socket cleanup
-		r := recover()
-		if r != nil {
-			closeConn <- fmt.Errorf("recovered from panic: %v", r)
-			s.appMtx.Unlock()
-		}
-	}()
-
 	for {
 
 		var req = &types.Request{}
@@ -165,7 +154,7 @@ func (s *SocketServer) handleRequests(closeConn chan error, conn net.Conn, respo
 			if err == io.EOF {
 				closeConn <- err
 			} else {
-				closeConn <- fmt.Errorf("error reading message: %v", err)
+				closeConn <- fmt.Errorf("Error reading message: %v", err.Error())
 			}
 			return
 		}
@@ -189,10 +178,10 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 		res := s.app.SetOption(*r.SetOption)
 		responses <- types.ToResponseSetOption(res)
 	case *types.Request_DeliverTx:
-		res := s.app.DeliverTx(*r.DeliverTx)
+		res := s.app.DeliverTx(r.DeliverTx.Tx)
 		responses <- types.ToResponseDeliverTx(res)
 	case *types.Request_CheckTx:
-		res := s.app.CheckTx(*r.CheckTx)
+		res := s.app.CheckTx(r.CheckTx.Tx)
 		responses <- types.ToResponseCheckTx(res)
 	case *types.Request_Commit:
 		res := s.app.Commit()

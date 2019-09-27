@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tm-db"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	dbm "github.com/orientwalt/tendermint/libs/db"
 )
 
 const defaultStorePeriodicSaveInterval = 1 * time.Minute
@@ -156,7 +156,7 @@ func (tms *TrustMetricStore) loadFromDB() bool {
 	peers := make(map[string]MetricHistoryJSON)
 	err := json.Unmarshal(bytes, &peers)
 	if err != nil {
-		panic(fmt.Sprintf("Could not unmarshal Trust Metric Store DB data: %v", err))
+		cmn.PanicCrisis(fmt.Sprintf("Could not unmarshal Trust Metric Store DB data: %v", err))
 	}
 
 	// If history data exists in the file,

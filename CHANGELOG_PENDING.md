@@ -1,28 +1,21 @@
-## v0.32.3
+## v0.31.6
 
-\*\*
-
-Special thanks to external contributors on this release:
-
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
+**
 
 ### BREAKING CHANGES:
 
-- CLI/RPC/Config
+* CLI/RPC/Config
 
-- Apps
+* Apps
 
-- Go API
+* Go API
+
+* Blockchain Protocol
+
+* P2P Protocol
 
 ### FEATURES:
 
 ### IMPROVEMENTS:
 
-- [privval] \#3370 Refactors and simplifies validator/kms connection handling. Please refer to thttps://github.com/tendermint/tendermint/pull/3370#issue-257360971
-- [consensus] \#3839 Reduce "Error attempting to add vote" message severity (Error -> Info)
-- [mempool] \#3877 Make `max_tx_bytes` configurable instead of `max_msg_bytes`
-
 ### BUG FIXES:
-
-- [config] \#3868 move misplaced `max_msg_bytes` into mempool section

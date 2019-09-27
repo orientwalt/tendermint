@@ -6,14 +6,15 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
-	"github.com/tendermint/tendermint/version"
+	"github.com/orientwalt/tendermint/types"
+	tmtime "github.com/orientwalt/tendermint/types/time"
+	"github.com/orientwalt/tendermint/version"
 )
 
 // database keys
 var (
-	stateKey = []byte("stateKey")
+	stateKey    = []byte("stateKey")
+	statePreKey = []byte("statePreKey")
 )
 
 //-----------------------------------------------------------------------------
@@ -81,6 +82,8 @@ type State struct {
 
 	// the latest AppHash we've received from calling abci.Commit()
 	AppHash []byte
+
+	Deprecated bool
 }
 
 // Copy makes a copy of the State for mutating.

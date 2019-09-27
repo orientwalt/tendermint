@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/p2p/mock"
+	"github.com/orientwalt/tendermint/config"
+	"github.com/orientwalt/tendermint/libs/log"
+	"github.com/orientwalt/tendermint/p2p"
+	"github.com/orientwalt/tendermint/p2p/mock"
 )
 
 var (
@@ -144,7 +144,7 @@ func TestPEXReactorRequestMessageAbuse(t *testing.T) {
 	sw.SetAddrBook(book)
 
 	peer := mock.NewPeer(nil)
-	p2p.AddPeerToSwitchPeerSet(sw, peer)
+	p2p.AddPeerToSwitch(sw, peer)
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
 	id := string(peer.ID())
@@ -174,7 +174,7 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	sw.SetAddrBook(book)
 
 	peer := mock.NewPeer(nil)
-	p2p.AddPeerToSwitchPeerSet(sw, peer)
+	p2p.AddPeerToSwitch(sw, peer)
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
 	id := string(peer.ID())
@@ -291,8 +291,7 @@ func TestPEXReactorSeedMode(t *testing.T) {
 	require.Nil(t, err)
 	defer os.RemoveAll(dir) // nolint: errcheck
 
-	pexRConfig := &PEXReactorConfig{SeedMode: true, SeedDisconnectWaitPeriod: 10 * time.Millisecond}
-	pexR, book := createReactor(pexRConfig)
+	pexR, book := createReactor(&PEXReactorConfig{SeedMode: true, SeedDisconnectWaitPeriod: 10 * time.Millisecond})
 	defer teardownReactor(book)
 
 	sw := createSwitchAndAddReactors(pexR)
@@ -316,78 +315,11 @@ func TestPEXReactorSeedMode(t *testing.T) {
 	pexR.attemptDisconnects()
 	assert.Equal(t, 1, sw.Peers().Size())
 
-	// sleep for SeedDisconnectWaitPeriod
-	time.Sleep(pexRConfig.SeedDisconnectWaitPeriod + 1*time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	// 3. attemptDisconnects should disconnect after wait period
 	pexR.attemptDisconnects()
 	assert.Equal(t, 0, sw.Peers().Size())
-}
-
-func TestPEXReactorDoesNotDisconnectFromPersistentPeerInSeedMode(t *testing.T) {
-	// directory to store address books
-	dir, err := ioutil.TempDir("", "pex_reactor")
-	require.Nil(t, err)
-	defer os.RemoveAll(dir) // nolint: errcheck
-
-	pexRConfig := &PEXReactorConfig{SeedMode: true, SeedDisconnectWaitPeriod: 1 * time.Millisecond}
-	pexR, book := createReactor(pexRConfig)
-	defer teardownReactor(book)
-
-	sw := createSwitchAndAddReactors(pexR)
-	sw.SetAddrBook(book)
-	err = sw.Start()
-	require.NoError(t, err)
-	defer sw.Stop()
-
-	assert.Zero(t, sw.Peers().Size())
-
-	peerSwitch := testCreateDefaultPeer(dir, 1)
-	require.NoError(t, peerSwitch.Start())
-	defer peerSwitch.Stop()
-
-	err = sw.AddPersistentPeers([]string{peerSwitch.NetAddress().String()})
-	require.NoError(t, err)
-
-	// 1. Test crawlPeers dials the peer
-	pexR.crawlPeers([]*p2p.NetAddress{peerSwitch.NetAddress()})
-	assert.Equal(t, 1, sw.Peers().Size())
-	assert.True(t, sw.Peers().Has(peerSwitch.NodeInfo().ID()))
-
-	// sleep for SeedDisconnectWaitPeriod
-	time.Sleep(pexRConfig.SeedDisconnectWaitPeriod + 1*time.Millisecond)
-
-	// 2. attemptDisconnects should not disconnect because the peer is persistent
-	pexR.attemptDisconnects()
-	assert.Equal(t, 1, sw.Peers().Size())
-}
-
-func TestPEXReactorDialsPeerUpToMaxAttemptsInSeedMode(t *testing.T) {
-	// directory to store address books
-	dir, err := ioutil.TempDir("", "pex_reactor")
-	require.Nil(t, err)
-	defer os.RemoveAll(dir) // nolint: errcheck
-
-	pexR, book := createReactor(&PEXReactorConfig{SeedMode: true})
-	defer teardownReactor(book)
-
-	sw := createSwitchAndAddReactors(pexR)
-	sw.SetAddrBook(book)
-	err = sw.Start()
-	require.NoError(t, err)
-	defer sw.Stop()
-
-	peer := mock.NewPeer(nil)
-	addr := peer.SocketAddr()
-
-	err = book.AddAddress(addr, addr)
-	require.NoError(t, err)
-
-	assert.True(t, book.HasAddress(addr))
-	// imitate maxAttemptsToDial reached
-	pexR.attemptsToDial.Store(addr.DialString(), _attemptsToDial{maxAttemptsToDial + 1, time.Now()})
-	pexR.crawlPeers([]*p2p.NetAddress{addr})
-	assert.False(t, book.HasAddress(addr))
 }
 
 // connect a peer to a seed, wait a bit, then stop it.
@@ -438,7 +370,7 @@ func TestPEXReactorSeedModeFlushStop(t *testing.T) {
 	reactor := switches[0].Reactors()["pex"].(*PEXReactor)
 	peerID := switches[1].NodeInfo().ID()
 
-	err = switches[1].DialPeerWithAddress(switches[0].NetAddress())
+	err = switches[1].DialPeerWithAddress(switches[0].NetAddress(), false)
 	assert.NoError(t, err)
 
 	// sleep up to a second while waiting for the peer to send us a message.

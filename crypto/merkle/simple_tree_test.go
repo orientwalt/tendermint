@@ -5,10 +5,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
-	. "github.com/tendermint/tendermint/libs/test"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	. "github.com/orientwalt/tendermint/libs/test"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/orientwalt/tendermint/crypto/tmhash"
 )
 
 type testItem []byte
@@ -68,42 +68,6 @@ func TestSimpleProof(t *testing.T) {
 		err = proof.Verify(MutateByteSlice(rootHash), item)
 		require.Error(t, err, "Expected verification to fail for mutated root hash")
 	}
-}
-
-func TestSimpleHashAlternatives(t *testing.T) {
-
-	total := 100
-
-	items := make([][]byte, total)
-	for i := 0; i < total; i++ {
-		items[i] = testItem(cmn.RandBytes(tmhash.Size))
-	}
-
-	rootHash1 := SimpleHashFromByteSlicesIterative(items)
-	rootHash2 := SimpleHashFromByteSlices(items)
-	require.Equal(t, rootHash1, rootHash2, "Unmatched root hashes: %X vs %X", rootHash1, rootHash2)
-}
-
-func BenchmarkSimpleHashAlternatives(b *testing.B) {
-	total := 100
-
-	items := make([][]byte, total)
-	for i := 0; i < total; i++ {
-		items[i] = testItem(cmn.RandBytes(tmhash.Size))
-	}
-
-	b.ResetTimer()
-	b.Run("recursive", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			_ = SimpleHashFromByteSlices(items)
-		}
-	})
-
-	b.Run("iterative", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			_ = SimpleHashFromByteSlicesIterative(items)
-		}
-	})
 }
 
 func Test_getSplitPoint(t *testing.T) {

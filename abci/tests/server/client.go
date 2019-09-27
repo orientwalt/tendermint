@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
-	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	abcicli "github.com/orientwalt/tendermint/abci/client"
+	"github.com/orientwalt/tendermint/abci/types"
+	cmn "github.com/orientwalt/tendermint/libs/common"
 )
 
 func InitChain(client abcicli.Client) error {
@@ -58,7 +58,7 @@ func Commit(client abcicli.Client, hashExp []byte) error {
 }
 
 func DeliverTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []byte) error {
-	res, _ := client.DeliverTxSync(types.RequestDeliverTx{Tx: txBytes})
+	res, _ := client.DeliverTxSync(txBytes)
 	code, data, log := res.Code, res.Data, res.Log
 	if code != codeExp {
 		fmt.Println("Failed test: DeliverTx")
@@ -77,7 +77,7 @@ func DeliverTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []
 }
 
 func CheckTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []byte) error {
-	res, _ := client.CheckTxSync(types.RequestCheckTx{Tx: txBytes})
+	res, _ := client.CheckTxSync(txBytes)
 	code, data, log := res.Code, res.Data, res.Log
 	if code != codeExp {
 		fmt.Println("Failed test: CheckTx")

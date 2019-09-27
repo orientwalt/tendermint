@@ -4,12 +4,12 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
+	cfg "github.com/orientwalt/tendermint/config"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/p2p"
+	"github.com/orientwalt/tendermint/privval"
+	"github.com/orientwalt/tendermint/types"
+	tmtime "github.com/orientwalt/tendermint/types/time"
 )
 
 // InitFilesCmd initialises a fresh Tendermint Core instance.

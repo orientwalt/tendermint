@@ -4,8 +4,8 @@ import (
 	"io"
 	"testing"
 
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/internal/benchmarking"
+	"github.com/orientwalt/tendermint/crypto"
+	"github.com/orientwalt/tendermint/crypto/internal/benchmarking"
 )
 
 func BenchmarkKeyGeneration(b *testing.B) {

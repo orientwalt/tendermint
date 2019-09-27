@@ -15,12 +15,12 @@ type Application interface {
 	Query(RequestQuery) ResponseQuery             // Query for state
 
 	// Mempool Connection
-	CheckTx(RequestCheckTx) ResponseCheckTx // Validate a tx for the mempool
+	CheckTx(tx []byte) ResponseCheckTx // Validate a tx for the mempool
 
 	// Consensus Connection
 	InitChain(RequestInitChain) ResponseInitChain    // Initialize blockchain with validators and other info from TendermintCore
 	BeginBlock(RequestBeginBlock) ResponseBeginBlock // Signals the beginning of a block
-	DeliverTx(RequestDeliverTx) ResponseDeliverTx    // Deliver a tx for full processing
+	DeliverTx(tx []byte) ResponseDeliverTx           // Deliver a tx for full processing
 	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
 	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
 }
@@ -45,11 +45,11 @@ func (BaseApplication) SetOption(req RequestSetOption) ResponseSetOption {
 	return ResponseSetOption{}
 }
 
-func (BaseApplication) DeliverTx(req RequestDeliverTx) ResponseDeliverTx {
+func (BaseApplication) DeliverTx(tx []byte) ResponseDeliverTx {
 	return ResponseDeliverTx{Code: CodeTypeOK}
 }
 
-func (BaseApplication) CheckTx(req RequestCheckTx) ResponseCheckTx {
+func (BaseApplication) CheckTx(tx []byte) ResponseCheckTx {
 	return ResponseCheckTx{Code: CodeTypeOK}
 }
 
@@ -103,12 +103,12 @@ func (app *GRPCApplication) SetOption(ctx context.Context, req *RequestSetOption
 }
 
 func (app *GRPCApplication) DeliverTx(ctx context.Context, req *RequestDeliverTx) (*ResponseDeliverTx, error) {
-	res := app.app.DeliverTx(*req)
+	res := app.app.DeliverTx(req.Tx)
 	return &res, nil
 }
 
 func (app *GRPCApplication) CheckTx(ctx context.Context, req *RequestCheckTx) (*ResponseCheckTx, error) {
-	res := app.app.CheckTx(*req)
+	res := app.app.CheckTx(req.Tx)
 	return &res, nil
 }
 

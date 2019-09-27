@@ -14,25 +14,23 @@ import (
 
 	"github.com/go-kit/kit/log/term"
 
-	"path"
-
-	abcicli "github.com/tendermint/tendermint/abci/client"
-	"github.com/tendermint/tendermint/abci/example/counter"
-	"github.com/tendermint/tendermint/abci/example/kvstore"
-	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
-	cstypes "github.com/tendermint/tendermint/consensus/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/log"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/privval"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
-	dbm "github.com/tendermint/tm-db"
+	abcicli "github.com/orientwalt/tendermint/abci/client"
+	"github.com/orientwalt/tendermint/abci/example/counter"
+	"github.com/orientwalt/tendermint/abci/example/kvstore"
+	abci "github.com/orientwalt/tendermint/abci/types"
+	bc "github.com/orientwalt/tendermint/blockchain"
+	cfg "github.com/orientwalt/tendermint/config"
+	cstypes "github.com/orientwalt/tendermint/consensus/types"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	dbm "github.com/orientwalt/tendermint/libs/db"
+	"github.com/orientwalt/tendermint/libs/log"
+	tmpubsub "github.com/orientwalt/tendermint/libs/pubsub"
+	mempl "github.com/orientwalt/tendermint/mempool"
+	"github.com/orientwalt/tendermint/p2p"
+	"github.com/orientwalt/tendermint/privval"
+	sm "github.com/orientwalt/tendermint/state"
+	"github.com/orientwalt/tendermint/types"
+	tmtime "github.com/orientwalt/tendermint/types/time"
 )
 
 const (
@@ -86,7 +84,7 @@ func (vs *validatorStub) signVote(voteType types.SignedMsgType, hash []byte, hea
 		Round:            vs.Round,
 		Timestamp:        tmtime.Now(),
 		Type:             voteType,
-		BlockID:          types.BlockID{Hash: hash, PartsHeader: header},
+		BlockID:          types.BlockID{hash, header},
 	}
 	err := vs.PrivValidator.SignVote(config.ChainID(), vote)
 	return vote, err
@@ -121,24 +119,6 @@ func incrementRound(vss ...*validatorStub) {
 	}
 }
 
-type ValidatorStubsByAddress []*validatorStub
-
-func (vss ValidatorStubsByAddress) Len() int {
-	return len(vss)
-}
-
-func (vss ValidatorStubsByAddress) Less(i, j int) bool {
-	return bytes.Compare(vss[i].GetPubKey().Address(), vss[j].GetPubKey().Address()) == -1
-}
-
-func (vss ValidatorStubsByAddress) Swap(i, j int) {
-	it := vss[i]
-	vss[i] = vss[j]
-	vss[i].Index = i
-	vss[j] = it
-	vss[j].Index = j
-}
-
 //-------------------------------------------------------------------------------
 // Functions for transitioning the consensus state
 
@@ -159,7 +139,7 @@ func decideProposal(cs1 *ConsensusState, vs *validatorStub, height int64, round 
 	}
 
 	// Make proposal
-	polRound, propBlockID := validRound, types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}
+	polRound, propBlockID := validRound, types.BlockID{block.Hash(), blockParts.Header()}
 	proposal = types.NewProposal(height, round, polRound, propBlockID)
 	if err := vs.SignProposal(chainID, proposal); err != nil {
 		panic(err)
@@ -248,7 +228,7 @@ func validatePrevoteAndPrecommit(t *testing.T, cs *ConsensusState, thisRound, lo
 }
 
 func subscribeToVoter(cs *ConsensusState, addr []byte) <-chan tmpubsub.Message {
-	votesSub, err := cs.eventBus.SubscribeUnbuffered(context.Background(), testSubscriber, types.EventQueryVote)
+	votesSub, err := cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryVote)
 	if err != nil {
 		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, types.EventQueryVote))
 	}
@@ -280,7 +260,7 @@ func newConsensusStateWithConfig(thisConfig *cfg.Config, state sm.State, pv type
 
 func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state sm.State, pv types.PrivValidator, app abci.Application, blockDB dbm.DB) *ConsensusState {
 	// Get BlockStore
-	blockStore := store.NewBlockStore(blockDB)
+	blockStore := bc.NewBlockStore(blockDB)
 
 	// one for mempool, one for consensus
 	mtx := new(sync.Mutex)
@@ -288,7 +268,7 @@ func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state sm.S
 	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 
 	// Make Mempool
-	mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
+	mempool := mempl.NewMempool(thisConfig.Mempool, proxyAppConnMem, 0)
 	mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
 	if thisConfig.Consensus.WaitForTxs() {
 		mempool.EnableTxsAvailable()
@@ -298,8 +278,7 @@ func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state sm.S
 	evpool := sm.MockEvidencePool{}
 
 	// Make ConsensusState
-	stateDB := blockDB
-	sm.SaveState(stateDB, state) //for save height 1's validators info
+	stateDB := dbm.NewMemDB()
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
 	cs := NewConsensusState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
@@ -372,7 +351,7 @@ func ensureNoNewUnlock(unlockCh <-chan tmpubsub.Message) {
 }
 
 func ensureNoNewTimeout(stepCh <-chan tmpubsub.Message, timeout int64) {
-	timeoutDuration := time.Duration(timeout*10) * time.Nanosecond
+	timeoutDuration := time.Duration(timeout*5) * time.Nanosecond
 	ensureNoNewEvent(
 		stepCh,
 		timeoutDuration,
@@ -419,7 +398,7 @@ func ensureNewRound(roundCh <-chan tmpubsub.Message, height int64, round int) {
 }
 
 func ensureNewTimeout(timeoutCh <-chan tmpubsub.Message, height int64, round int, timeout int64) {
-	timeoutDuration := time.Duration(timeout*10) * time.Nanosecond
+	timeoutDuration := time.Duration(timeout*5) * time.Nanosecond
 	ensureNewEvent(timeoutCh, height, round, timeoutDuration,
 		"Timeout expired while waiting for NewTimeout event")
 }
@@ -585,7 +564,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 
-		css[i] = newConsensusStateWithConfigAndBlockStore(thisConfig, state, privVals[i], app, stateDB)
+		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], app)
 		css[i].SetTimeoutTicker(tickerFunc())
 		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
@@ -597,11 +576,12 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 }
 
 // nPeers = nValidators + nNotValidator
-func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker, appFunc func(string) abci.Application) ([]*ConsensusState, *types.GenesisDoc, *cfg.Config, cleanupFunc) {
+func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker,
+	appFunc func() abci.Application) ([]*ConsensusState, cleanupFunc) {
+
 	genDoc, privVals := randGenesisDoc(nValidators, false, testMinPower)
 	css := make([]*ConsensusState, nPeers)
 	logger := consensusLogger()
-	var peer0Config *cfg.Config
 	configRootDirs := make([]string, 0, nPeers)
 	for i := 0; i < nPeers; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
@@ -609,9 +589,6 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
 		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
-		if i == 0 {
-			peer0Config = thisConfig
-		}
 		var privVal types.PrivValidator
 		if i < nValidators {
 			privVal = privVals[i]
@@ -628,19 +605,15 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 			privVal = privval.GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
 		}
 
-		app := appFunc(path.Join(config.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
+		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		if _, ok := app.(*kvstore.PersistentKVStoreApplication); ok {
-			state.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version. If don't do this, replay test will fail
-		}
 		app.InitChain(abci.RequestInitChain{Validators: vals})
-		//sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above
 
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVal, app)
 		css[i].SetTimeoutTicker(tickerFunc())
 		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
-	return css, genDoc, peer0Config, func() {
+	return css, func() {
 		for _, dir := range configRootDirs {
 			os.RemoveAll(dir)
 		}
@@ -745,8 +718,4 @@ func newPersistentKVStore() abci.Application {
 		panic(err)
 	}
 	return kvstore.NewPersistentKVStoreApplication(dir)
-}
-
-func newPersistentKVStoreWithPath(dbDir string) abci.Application {
-	return kvstore.NewPersistentKVStoreApplication(dbDir)
 }

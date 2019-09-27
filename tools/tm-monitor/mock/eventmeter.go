@@ -5,8 +5,8 @@ import (
 	"reflect"
 
 	amino "github.com/tendermint/go-amino"
-	"github.com/tendermint/tendermint/libs/log"
-	em "github.com/tendermint/tendermint/tools/tm-monitor/eventmeter"
+	"github.com/orientwalt/tendermint/libs/log"
+	em "github.com/orientwalt/tendermint/tools/tm-monitor/eventmeter"
 )
 
 type EventMeter struct {
@@ -54,7 +54,7 @@ func (c *RpcClient) Call(method string, params map[string]interface{}, result in
 	}
 
 	rv, rt := reflect.ValueOf(result), reflect.TypeOf(result)
-	rv, _ = rv.Elem(), rt.Elem()
+	rv, rt = rv.Elem(), rt.Elem()
 	rv.Set(reflect.ValueOf(s))
 
 	return s, nil

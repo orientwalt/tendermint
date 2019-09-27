@@ -61,10 +61,9 @@ func (trs *TaskResultSet) Reap() *TaskResultSet {
 					TaskResult: result,
 					OK:         true,
 				}
+			} else {
+				// We already wrote it.
 			}
-			// else {
-			// We already wrote it.
-			// }
 		default:
 			// Do nothing.
 		}
@@ -84,10 +83,9 @@ func (trs *TaskResultSet) Wait() *TaskResultSet {
 				TaskResult: result,
 				OK:         true,
 			}
+		} else {
+			// We already wrote it.
 		}
-		// else {
-		// We already wrote it.
-		// }
 	}
 	return trs
 }

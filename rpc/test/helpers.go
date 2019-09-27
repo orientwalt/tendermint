@@ -8,32 +8,22 @@ import (
 	"strings"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/log"
+	"github.com/orientwalt/tendermint/libs/log"
 
-	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	nm "github.com/tendermint/tendermint/node"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/proxy"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
-	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
+	abci "github.com/orientwalt/tendermint/abci/types"
+
+	cfg "github.com/orientwalt/tendermint/config"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	nm "github.com/orientwalt/tendermint/node"
+	"github.com/orientwalt/tendermint/p2p"
+	"github.com/orientwalt/tendermint/privval"
+	"github.com/orientwalt/tendermint/proxy"
+	ctypes "github.com/orientwalt/tendermint/rpc/core/types"
+	core_grpc "github.com/orientwalt/tendermint/rpc/grpc"
+	rpcclient "github.com/orientwalt/tendermint/rpc/lib/client"
 )
 
-// Options helps with specifying some parameters for our RPC testing for greater
-// control.
-type Options struct {
-	suppressStdout bool
-	recreateConfig bool
-}
-
 var globalConfig *cfg.Config
-var defaultOptions = Options{
-	suppressStdout: false,
-	recreateConfig: false,
-}
 
 func waitForRPC() {
 	laddr := GetConfig().RPC.ListenAddress
@@ -87,24 +77,19 @@ func makeAddrs() (string, string, string) {
 		fmt.Sprintf("tcp://0.0.0.0:%d", randPort())
 }
 
-func createConfig() *cfg.Config {
-	pathname := makePathname()
-	c := cfg.ResetTestRoot(pathname)
-
-	// and we use random ports to run in parallel
-	tm, rpc, grpc := makeAddrs()
-	c.P2P.ListenAddress = tm
-	c.RPC.ListenAddress = rpc
-	c.RPC.CORSAllowedOrigins = []string{"https://tendermint.com/"}
-	c.RPC.GRPCListenAddress = grpc
-	c.TxIndex.IndexTags = "app.creator,tx.height" // see kvstore application
-	return c
-}
-
 // GetConfig returns a config for the test cases as a singleton
-func GetConfig(forceCreate ...bool) *cfg.Config {
-	if globalConfig == nil || (len(forceCreate) > 0 && forceCreate[0]) {
-		globalConfig = createConfig()
+func GetConfig() *cfg.Config {
+	if globalConfig == nil {
+		pathname := makePathname()
+		globalConfig = cfg.ResetTestRoot(pathname)
+
+		// and we use random ports to run in parallel
+		tm, rpc, grpc := makeAddrs()
+		globalConfig.P2P.ListenAddress = tm
+		globalConfig.RPC.ListenAddress = rpc
+		globalConfig.RPC.CORSAllowedOrigins = []string{"https://tendermint.com/"}
+		globalConfig.RPC.GRPCListenAddress = grpc
+		globalConfig.TxIndex.IndexTags = "app.creator,tx.height" // see kvstore application
 	}
 	return globalConfig
 }
@@ -115,12 +100,8 @@ func GetGRPCClient() core_grpc.BroadcastAPIClient {
 }
 
 // StartTendermint starts a test tendermint server in a go routine and returns when it is initialized
-func StartTendermint(app abci.Application, opts ...func(*Options)) *nm.Node {
-	nodeOpts := defaultOptions
-	for _, opt := range opts {
-		opt(&nodeOpts)
-	}
-	node := NewTendermint(app, &nodeOpts)
+func StartTendermint(app abci.Application) *nm.Node {
+	node := NewTendermint(app)
 	err := node.Start()
 	if err != nil {
 		panic(err)
@@ -130,9 +111,7 @@ func StartTendermint(app abci.Application, opts ...func(*Options)) *nm.Node {
 	waitForRPC()
 	waitForGRPC()
 
-	if !nodeOpts.suppressStdout {
-		fmt.Println("Tendermint running!")
-	}
+	fmt.Println("Tendermint running!")
 
 	return node
 }
@@ -146,16 +125,11 @@ func StopTendermint(node *nm.Node) {
 }
 
 // NewTendermint creates a new tendermint server and sleeps forever
-func NewTendermint(app abci.Application, opts *Options) *nm.Node {
+func NewTendermint(app abci.Application) *nm.Node {
 	// Create & start node
-	config := GetConfig(opts.recreateConfig)
-	var logger log.Logger
-	if opts.suppressStdout {
-		logger = log.NewNopLogger()
-	} else {
-		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-		logger = log.NewFilter(logger, log.AllowError())
-	}
+	config := GetConfig()
+	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	logger = log.NewFilter(logger, log.AllowError())
 	pvKeyFile := config.PrivValidatorKeyFile()
 	pvKeyStateFile := config.PrivValidatorStateFile()
 	pv := privval.LoadOrGenFilePV(pvKeyFile, pvKeyStateFile)
@@ -173,16 +147,4 @@ func NewTendermint(app abci.Application, opts *Options) *nm.Node {
 		panic(err)
 	}
 	return node
-}
-
-// SuppressStdout is an option that tries to make sure the RPC test Tendermint
-// node doesn't log anything to stdout.
-func SuppressStdout(o *Options) {
-	o.suppressStdout = true
-}
-
-// RecreateConfig instructs the RPC test to recreate the configuration each
-// time, instead of treating it as a global singleton.
-func RecreateConfig(o *Options) {
-	o.recreateConfig = true
 }

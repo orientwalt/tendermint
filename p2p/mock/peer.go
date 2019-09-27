@@ -3,10 +3,10 @@ package mock
 import (
 	"net"
 
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/p2p/conn"
+	"github.com/orientwalt/tendermint/crypto/ed25519"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/p2p"
+	"github.com/orientwalt/tendermint/p2p/conn"
 )
 
 type Peer struct {

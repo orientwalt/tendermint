@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/tendermint/tendermint/libs/log"
+	"github.com/orientwalt/tendermint/libs/log"
 )
 
 var (
@@ -194,7 +194,8 @@ func (bs *BaseService) Reset() error {
 
 // OnReset implements Service by panicking.
 func (bs *BaseService) OnReset() error {
-	panic("The service cannot be reset")
+	PanicSanity("The service cannot be reset")
+	return nil
 }
 
 // IsRunning implements Service by returning true or false depending on the

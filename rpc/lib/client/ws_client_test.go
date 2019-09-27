@@ -12,9 +12,9 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/libs/log"
+	"github.com/orientwalt/tendermint/libs/log"
 
-	types "github.com/tendermint/tendermint/rpc/lib/types"
+	types "github.com/orientwalt/tendermint/rpc/lib/types"
 )
 
 var wsCallTimeout = 5 * time.Second
@@ -212,8 +212,7 @@ func callWgDoneOnResult(t *testing.T, c *WSClient, wg *sync.WaitGroup) {
 		select {
 		case resp := <-c.ResponsesCh:
 			if resp.Error != nil {
-				t.Errorf("unexpected error: %v", resp.Error)
-				return
+				t.Fatalf("unexpected error: %v", resp.Error)
 			}
 			if resp.Result != nil {
 				wg.Done()

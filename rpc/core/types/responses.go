@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	abci "github.com/orientwalt/tendermint/abci/types"
+	"github.com/orientwalt/tendermint/crypto"
+	cmn "github.com/orientwalt/tendermint/libs/common"
 
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
+	"github.com/orientwalt/tendermint/p2p"
+	"github.com/orientwalt/tendermint/state"
+	"github.com/orientwalt/tendermint/types"
 )
 
 // List of blocks
@@ -194,11 +194,6 @@ type ResultABCIQuery struct {
 	Response abci.ResponseQuery `json:"response"`
 }
 
-// Result of broadcasting evidence
-type ResultBroadcastEvidence struct {
-	Hash []byte `json:"hash"`
-}
-
 // empty results
 type (
 	ResultUnsafeFlushMempool struct{}
@@ -210,7 +205,7 @@ type (
 
 // Event data from a subscription
 type ResultEvent struct {
-	Query  string              `json:"query"`
-	Data   types.TMEventData   `json:"data"`
-	Events map[string][]string `json:"events"`
+	Query string            `json:"query"`
+	Data  types.TMEventData `json:"data"`
+	Tags  map[string]string `json:"tags"`
 }

@@ -10,9 +10,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
+	"github.com/orientwalt/tendermint/crypto/ed25519"
+	"github.com/orientwalt/tendermint/types"
+	tmtime "github.com/orientwalt/tendermint/types/time"
 )
 
 func TestGenLoadValidator(t *testing.T) {
@@ -50,7 +50,7 @@ func TestResetValidator(t *testing.T) {
 	// test vote
 	height, round := int64(10), 1
 	voteType := byte(types.PrevoteType)
-	blockID := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{}}
+	blockID := types.BlockID{[]byte{1, 2, 3}, types.PartSetHeader{}}
 	vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
 	err = privVal.SignVote("mychainid", vote)
 	assert.NoError(t, err, "expected no error signing vote")
@@ -58,7 +58,7 @@ func TestResetValidator(t *testing.T) {
 	// priv val after signing is not same as empty
 	assert.NotEqual(t, privVal.LastSignState, emptyState)
 
-	// priv val after AcceptNewConnection is same as empty
+	// priv val after reset is same as empty
 	privVal.Reset()
 	assert.Equal(t, privVal.LastSignState, emptyState)
 }
@@ -162,9 +162,8 @@ func TestSignVote(t *testing.T) {
 
 	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
 
-	block1 := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{}}
-	block2 := types.BlockID{Hash: []byte{3, 2, 1}, PartsHeader: types.PartSetHeader{}}
-
+	block1 := types.BlockID{[]byte{1, 2, 3}, types.PartSetHeader{}}
+	block2 := types.BlockID{[]byte{3, 2, 1}, types.PartSetHeader{}}
 	height, round := int64(10), 1
 	voteType := byte(types.PrevoteType)
 
@@ -208,8 +207,8 @@ func TestSignProposal(t *testing.T) {
 
 	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
 
-	block1 := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{Total: 5, Hash: []byte{1, 2, 3}}}
-	block2 := types.BlockID{Hash: []byte{3, 2, 1}, PartsHeader: types.PartSetHeader{Total: 10, Hash: []byte{3, 2, 1}}}
+	block1 := types.BlockID{[]byte{1, 2, 3}, types.PartSetHeader{5, []byte{1, 2, 3}}}
+	block2 := types.BlockID{[]byte{3, 2, 1}, types.PartSetHeader{10, []byte{3, 2, 1}}}
 	height, round := int64(10), 1
 
 	// sign a proposal for first time
@@ -250,7 +249,7 @@ func TestDifferByTimestamp(t *testing.T) {
 
 	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
 
-	block1 := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{Total: 5, Hash: []byte{1, 2, 3}}}
+	block1 := types.BlockID{[]byte{1, 2, 3}, types.PartSetHeader{5, []byte{1, 2, 3}}}
 	height, round := int64(10), 1
 	chainID := "mychainid"
 
@@ -278,7 +277,7 @@ func TestDifferByTimestamp(t *testing.T) {
 	// test vote
 	{
 		voteType := byte(types.PrevoteType)
-		blockID := types.BlockID{Hash: []byte{1, 2, 3}, PartsHeader: types.PartSetHeader{}}
+		blockID := types.BlockID{[]byte{1, 2, 3}, types.PartSetHeader{}}
 		vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
 		err := privVal.SignVote("mychainid", vote)
 		assert.NoError(t, err, "expected no error signing vote")

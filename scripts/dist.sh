@@ -21,7 +21,7 @@ mkdir -p build/pkg
 
 # Get the git commit
 GIT_COMMIT="$(git rev-parse --short=8 HEAD)"
-GIT_IMPORT="github.com/tendermint/tendermint/version"
+GIT_IMPORT="github.com/orientwalt/tendermint/version"
 
 # Determine the arch/os combos we're building for
 XC_ARCH=${XC_ARCH:-"386 amd64 arm"}
@@ -30,6 +30,9 @@ XC_EXCLUDE=${XC_EXCLUDE:-" darwin/arm solaris/amd64 solaris/386 solaris/arm free
 
 # Make sure build tools are available.
 make get_tools
+
+# Get VENDORED dependencies
+make get_vendor_deps
 
 # Build!
 # ldflags: -s Omit the symbol table and debug information.

@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/p2p"
+	"github.com/orientwalt/tendermint/crypto"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/p2p"
 )
 
 const (
@@ -178,11 +178,11 @@ func (a *addrBook) OurAddress(addr *p2p.NetAddress) bool {
 	return ok
 }
 
-func (a *addrBook) AddPrivateIDs(ids []string) {
+func (a *addrBook) AddPrivateIDs(IDs []string) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	for _, id := range ids {
+	for _, id := range IDs {
 		a.privateIDs[p2p.ID(id)] = struct{}{}
 	}
 }
@@ -586,8 +586,8 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 		return ErrAddrBookNilAddr{addr, src}
 	}
 
-	if err := addr.Valid(); err != nil {
-		return ErrAddrBookInvalidAddr{Addr: addr, AddrErr: err}
+	if !addr.HasID() {
+		return ErrAddrBookInvalidAddrNoID{addr}
 	}
 
 	if _, ok := a.privateIDs[addr.ID]; ok {
@@ -605,6 +605,10 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 
 	if a.routabilityStrict && !addr.Routable() {
 		return ErrAddrBookNonRoutable{addr}
+	}
+
+	if !addr.Valid() {
+		return ErrAddrBookInvalidAddr{addr}
 	}
 
 	ka := a.addrLookup[addr.ID]
@@ -643,7 +647,7 @@ func (a *addrBook) randomPickAddresses(bucketType byte, num int) []*p2p.NetAddre
 	}
 	total := 0
 	for _, bucket := range buckets {
-		total += len(bucket)
+		total = total + len(bucket)
 	}
 	addresses := make([]*knownAddress, 0, total)
 	for _, bucket := range buckets {

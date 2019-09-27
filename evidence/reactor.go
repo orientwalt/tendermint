@@ -7,10 +7,10 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 
-	clist "github.com/tendermint/tendermint/libs/clist"
-	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/types"
+	clist "github.com/orientwalt/tendermint/libs/clist"
+	"github.com/orientwalt/tendermint/libs/log"
+	"github.com/orientwalt/tendermint/p2p"
+	"github.com/orientwalt/tendermint/types"
 )
 
 const (
@@ -58,6 +58,11 @@ func (evR *EvidenceReactor) GetChannels() []*p2p.ChannelDescriptor {
 // AddPeer implements Reactor.
 func (evR *EvidenceReactor) AddPeer(peer p2p.Peer) {
 	go evR.broadcastEvidenceRoutine(peer)
+}
+
+// RemovePeer implements Reactor.
+func (evR *EvidenceReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
+	// nothing to do
 }
 
 // Receive implements Reactor.

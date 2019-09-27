@@ -7,12 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/state/txindex"
-	"github.com/tendermint/tendermint/state/txindex/kv"
-	"github.com/tendermint/tendermint/types"
-	db "github.com/tendermint/tm-db"
+	abci "github.com/orientwalt/tendermint/abci/types"
+	"github.com/orientwalt/tendermint/libs/db"
+	"github.com/orientwalt/tendermint/libs/log"
+	"github.com/orientwalt/tendermint/state/txindex"
+	"github.com/orientwalt/tendermint/state/txindex/kv"
+	"github.com/orientwalt/tendermint/types"
 )
 
 func TestIndexerServiceIndexesBlocks(t *testing.T) {
@@ -43,14 +43,14 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 		Tx:     types.Tx("foo"),
 		Result: abci.ResponseDeliverTx{Code: 0},
 	}
-	eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult1})
+	eventBus.PublishEventTx(types.EventDataTx{*txResult1})
 	txResult2 := &types.TxResult{
 		Height: 1,
 		Index:  uint32(1),
 		Tx:     types.Tx("bar"),
 		Result: abci.ResponseDeliverTx{Code: 0},
 	}
-	eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult2})
+	eventBus.PublishEventTx(types.EventDataTx{*txResult2})
 
 	time.Sleep(100 * time.Millisecond)
 

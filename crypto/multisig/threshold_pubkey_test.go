@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/secp256k1"
+	"github.com/orientwalt/tendermint/crypto"
+	"github.com/orientwalt/tendermint/crypto/ed25519"
+	"github.com/orientwalt/tendermint/crypto/secp256k1"
 )
 
 // This tests multisig functionality, but it expects the first k signatures to be valid
@@ -36,68 +36,30 @@ func TestThresholdMultisigValidCases(t *testing.T) {
 	for tcIndex, tc := range cases {
 		multisigKey := NewPubKeyMultisigThreshold(tc.k, tc.pubkeys)
 		multisignature := NewMultisig(len(tc.pubkeys))
-
 		for i := 0; i < tc.k-1; i++ {
 			signingIndex := tc.signingIndices[i]
-			require.NoError(
-				t,
-				multisignature.AddSignatureFromPubKey(tc.signatures[signingIndex], tc.pubkeys[signingIndex], tc.pubkeys),
-			)
-			require.False(
-				t,
-				multisigKey.VerifyBytes(tc.msg, multisignature.Marshal()),
-				"multisig passed when i < k, tc %d, i %d", tcIndex, i,
-			)
-			require.NoError(
-				t,
-				multisignature.AddSignatureFromPubKey(tc.signatures[signingIndex], tc.pubkeys[signingIndex], tc.pubkeys),
-			)
-			require.Equal(
-				t,
-				i+1,
-				len(multisignature.Sigs),
-				"adding a signature for the same pubkey twice increased signature count by 2, tc %d", tcIndex,
-			)
+			multisignature.AddSignatureFromPubKey(tc.signatures[signingIndex], tc.pubkeys[signingIndex], tc.pubkeys)
+			require.False(t, multisigKey.VerifyBytes(tc.msg, multisignature.Marshal()),
+				"multisig passed when i < k, tc %d, i %d", tcIndex, i)
+			multisignature.AddSignatureFromPubKey(tc.signatures[signingIndex], tc.pubkeys[signingIndex], tc.pubkeys)
+			require.Equal(t, i+1, len(multisignature.Sigs),
+				"adding a signature for the same pubkey twice increased signature count by 2, tc %d", tcIndex)
 		}
-
-		require.False(
-			t,
-			multisigKey.VerifyBytes(tc.msg, multisignature.Marshal()),
-			"multisig passed with k - 1 sigs, tc %d", tcIndex,
-		)
-		require.NoError(
-			t,
-			multisignature.AddSignatureFromPubKey(tc.signatures[tc.signingIndices[tc.k]], tc.pubkeys[tc.signingIndices[tc.k]], tc.pubkeys),
-		)
-		require.True(
-			t,
-			multisigKey.VerifyBytes(tc.msg, multisignature.Marshal()),
-			"multisig failed after k good signatures, tc %d", tcIndex,
-		)
-
+		require.False(t, multisigKey.VerifyBytes(tc.msg, multisignature.Marshal()),
+			"multisig passed with k - 1 sigs, tc %d", tcIndex)
+		multisignature.AddSignatureFromPubKey(tc.signatures[tc.signingIndices[tc.k]], tc.pubkeys[tc.signingIndices[tc.k]], tc.pubkeys)
+		require.True(t, multisigKey.VerifyBytes(tc.msg, multisignature.Marshal()),
+			"multisig failed after k good signatures, tc %d", tcIndex)
 		for i := tc.k + 1; i < len(tc.signingIndices); i++ {
 			signingIndex := tc.signingIndices[i]
-
-			require.NoError(
-				t,
-				multisignature.AddSignatureFromPubKey(tc.signatures[signingIndex], tc.pubkeys[signingIndex], tc.pubkeys),
-			)
-			require.Equal(
-				t,
-				tc.passAfterKSignatures[i-tc.k-1],
+			multisignature.AddSignatureFromPubKey(tc.signatures[signingIndex], tc.pubkeys[signingIndex], tc.pubkeys)
+			require.Equal(t, tc.passAfterKSignatures[i-tc.k-1],
 				multisigKey.VerifyBytes(tc.msg, multisignature.Marshal()),
-				"multisig didn't verify as expected after k sigs, tc %d, i %d", tcIndex, i,
-			)
-			require.NoError(
-				t,
-				multisignature.AddSignatureFromPubKey(tc.signatures[signingIndex], tc.pubkeys[signingIndex], tc.pubkeys),
-			)
-			require.Equal(
-				t,
-				i+1,
-				len(multisignature.Sigs),
-				"adding a signature for the same pubkey twice increased signature count by 2, tc %d", tcIndex,
-			)
+				"multisig didn't verify as expected after k sigs, tc %d, i %d", tcIndex, i)
+
+			multisignature.AddSignatureFromPubKey(tc.signatures[signingIndex], tc.pubkeys[signingIndex], tc.pubkeys)
+			require.Equal(t, i+1, len(multisignature.Sigs),
+				"adding a signature for the same pubkey twice increased signature count by 2, tc %d", tcIndex)
 		}
 	}
 }

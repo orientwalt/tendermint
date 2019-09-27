@@ -12,22 +12,21 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/abci/example/kvstore"
-	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/evidence"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/log"
-	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/p2p"
-	p2pmock "github.com/tendermint/tendermint/p2p/mock"
-	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/proxy"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
-	"github.com/tendermint/tendermint/version"
-	dbm "github.com/tendermint/tm-db"
+	"github.com/orientwalt/tendermint/abci/example/kvstore"
+	cfg "github.com/orientwalt/tendermint/config"
+	"github.com/orientwalt/tendermint/crypto/ed25519"
+	"github.com/orientwalt/tendermint/evidence"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	dbm "github.com/orientwalt/tendermint/libs/db"
+	"github.com/orientwalt/tendermint/libs/log"
+	mempl "github.com/orientwalt/tendermint/mempool"
+	"github.com/orientwalt/tendermint/p2p"
+	"github.com/orientwalt/tendermint/privval"
+	"github.com/orientwalt/tendermint/proxy"
+	sm "github.com/orientwalt/tendermint/state"
+	"github.com/orientwalt/tendermint/types"
+	tmtime "github.com/orientwalt/tendermint/types/time"
+	"github.com/orientwalt/tendermint/version"
 )
 
 func TestNodeStartStop(t *testing.T) {
@@ -101,10 +100,7 @@ func TestNodeDelayedStart(t *testing.T) {
 	n.GenesisDoc().GenesisTime = now.Add(2 * time.Second)
 	require.NoError(t, err)
 
-	err = n.Start()
-	require.NoError(t, err)
-	defer n.Stop()
-
+	n.Start()
 	startTime := tmtime.Now()
 	assert.Equal(t, true, startTime.After(n.GenesisDoc().GenesisTime))
 }
@@ -136,29 +132,25 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	config.BaseConfig.PrivValidatorListenAddr = addr
 
 	dialer := privval.DialTCPFn(addr, 100*time.Millisecond, ed25519.GenPrivKey())
-	dialerEndpoint := privval.NewSignerDialerEndpoint(
+	pvsc := privval.NewSignerServiceEndpoint(
 		log.TestingLogger(),
-		dialer,
-	)
-	privval.SignerDialerEndpointTimeoutReadWrite(100 * time.Millisecond)(dialerEndpoint)
-
-	signerServer := privval.NewSignerServer(
-		dialerEndpoint,
 		config.ChainID(),
 		types.NewMockPV(),
+		dialer,
 	)
+	privval.SignerServiceEndpointTimeoutReadWrite(100 * time.Millisecond)(pvsc)
 
 	go func() {
-		err := signerServer.Start()
+		err := pvsc.Start()
 		if err != nil {
 			panic(err)
 		}
 	}()
-	defer signerServer.Stop()
+	defer pvsc.Stop()
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
-	assert.IsType(t, &privval.SignerClient{}, n.PrivValidator())
+	assert.IsType(t, &privval.SignerValidatorEndpoint{}, n.PrivValidator())
 }
 
 // address without a protocol must result in error
@@ -182,17 +174,13 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	config.BaseConfig.PrivValidatorListenAddr = "unix://" + tmpfile
 
 	dialer := privval.DialUnixFn(tmpfile)
-	dialerEndpoint := privval.NewSignerDialerEndpoint(
+	pvsc := privval.NewSignerServiceEndpoint(
 		log.TestingLogger(),
-		dialer,
-	)
-	privval.SignerDialerEndpointTimeoutReadWrite(100 * time.Millisecond)(dialerEndpoint)
-
-	pvsc := privval.NewSignerServer(
-		dialerEndpoint,
 		config.ChainID(),
 		types.NewMockPV(),
+		dialer,
 	)
+	privval.SignerServiceEndpointTimeoutReadWrite(100 * time.Millisecond)(pvsc)
 
 	go func() {
 		err := pvsc.Start()
@@ -202,7 +190,8 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
-	assert.IsType(t, &privval.SignerClient{}, n.PrivValidator())
+	assert.IsType(t, &privval.SignerValidatorEndpoint{}, n.PrivValidator())
+
 }
 
 // testFreeAddr claims a free port so we don't block on listener being ready.
@@ -235,7 +224,7 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	// Make Mempool
 	memplMetrics := mempl.PrometheusMetrics("node_test")
-	mempool := mempl.NewCListMempool(
+	mempool := mempl.NewMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
@@ -290,49 +279,16 @@ func TestCreateProposalBlock(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestNodeNewNodeCustomReactors(t *testing.T) {
-	config := cfg.ResetTestRoot("node_new_node_custom_reactors_test")
-	defer os.RemoveAll(config.RootDir)
-
-	cr := p2pmock.NewReactor()
-	customBlockchainReactor := p2pmock.NewReactor()
-
-	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
-	require.NoError(t, err)
-
-	n, err := NewNode(config,
-		privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile()),
-		nodeKey,
-		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
-		DefaultGenesisDocProviderFunc(config),
-		DefaultDBProvider,
-		DefaultMetricsProvider(config.Instrumentation),
-		log.TestingLogger(),
-		CustomReactors(map[string]p2p.Reactor{"FOO": cr, "BLOCKCHAIN": customBlockchainReactor}),
-	)
-	require.NoError(t, err)
-
-	err = n.Start()
-	require.NoError(t, err)
-	defer n.Stop()
-
-	assert.True(t, cr.IsRunning())
-	assert.Equal(t, cr, n.Switch().Reactor("FOO"))
-
-	assert.True(t, customBlockchainReactor.IsRunning())
-	assert.Equal(t, customBlockchainReactor, n.Switch().Reactor("BLOCKCHAIN"))
-}
-
 func state(nVals int, height int64) (sm.State, dbm.DB) {
 	vals := make([]types.GenesisValidator, nVals)
 	for i := 0; i < nVals; i++ {
 		secret := []byte(fmt.Sprintf("test%d", i))
 		pk := ed25519.GenPrivKeyFromSecret(secret)
 		vals[i] = types.GenesisValidator{
-			Address: pk.PubKey().Address(),
-			PubKey:  pk.PubKey(),
-			Power:   1000,
-			Name:    fmt.Sprintf("test%d", i),
+			pk.PubKey().Address(),
+			pk.PubKey(),
+			1000,
+			fmt.Sprintf("test%d", i),
 		}
 	}
 	s, _ := sm.MakeGenesisState(&types.GenesisDoc{

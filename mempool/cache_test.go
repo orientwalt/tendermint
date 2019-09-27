@@ -7,10 +7,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/abci/example/kvstore"
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/types"
+	"github.com/orientwalt/tendermint/abci/example/kvstore"
+	"github.com/orientwalt/tendermint/proxy"
+	"github.com/orientwalt/tendermint/types"
 )
 
 func TestCacheRemove(t *testing.T) {
@@ -67,7 +66,7 @@ func TestCacheAfterUpdate(t *testing.T) {
 			tx := types.Tx{byte(v)}
 			updateTxs = append(updateTxs, tx)
 		}
-		mempool.Update(int64(tcIndex), updateTxs, abciResponses(len(updateTxs), abci.CodeTypeOK), nil, nil)
+		mempool.Update(int64(tcIndex), updateTxs, nil, nil)
 
 		for _, v := range tc.reAddIndices {
 			tx := types.Tx{byte(v)}

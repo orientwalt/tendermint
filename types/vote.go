@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/crypto"
+	cmn "github.com/orientwalt/tendermint/libs/common"
 )
 
 const (
@@ -93,7 +93,7 @@ func (vote *Vote) String() string {
 	case PrecommitType:
 		typeString = "Precommit"
 	default:
-		panic("Unknown vote type")
+		cmn.PanicSanity("Unknown vote type")
 	}
 
 	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s}",

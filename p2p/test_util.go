@@ -5,13 +5,13 @@ import (
 	"net"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/log"
+	"github.com/orientwalt/tendermint/crypto"
+	"github.com/orientwalt/tendermint/crypto/ed25519"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/libs/log"
 
-	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/p2p/conn"
+	"github.com/orientwalt/tendermint/config"
+	"github.com/orientwalt/tendermint/p2p/conn"
 )
 
 const testCh = 0x01
@@ -27,7 +27,7 @@ func (ni mockNodeInfo) NetAddress() (*NetAddress, error)    { return ni.addr, ni
 func (ni mockNodeInfo) Validate() error                     { return nil }
 func (ni mockNodeInfo) CompatibleWith(other NodeInfo) error { return nil }
 
-func AddPeerToSwitchPeerSet(sw *Switch, peer Peer) {
+func AddPeerToSwitch(sw *Switch, peer Peer) {
 	sw.peers.Add(peer)
 }
 

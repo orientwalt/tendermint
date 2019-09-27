@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"strings"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	cmn "github.com/orientwalt/tendermint/libs/common"
 
-	"github.com/tendermint/tendermint/crypto/merkle"
-	"github.com/tendermint/tendermint/lite"
-	lerr "github.com/tendermint/tendermint/lite/errors"
-	rpcclient "github.com/tendermint/tendermint/rpc/client"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/types"
+	"github.com/orientwalt/tendermint/crypto/merkle"
+	"github.com/orientwalt/tendermint/lite"
+	lerr "github.com/orientwalt/tendermint/lite/errors"
+	rpcclient "github.com/orientwalt/tendermint/rpc/client"
+	ctypes "github.com/orientwalt/tendermint/rpc/core/types"
+	"github.com/orientwalt/tendermint/types"
 )
 
 // GetWithProof will query the key on the given node, and verify it has

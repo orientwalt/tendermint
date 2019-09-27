@@ -10,18 +10,16 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
-	"github.com/tendermint/tendermint/abci/example/kvstore"
-	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/mock"
-	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/proxy"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
-	db "github.com/tendermint/tm-db"
+	"github.com/orientwalt/tendermint/abci/example/kvstore"
+	bc "github.com/orientwalt/tendermint/blockchain"
+	cfg "github.com/orientwalt/tendermint/config"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/libs/db"
+	"github.com/orientwalt/tendermint/libs/log"
+	"github.com/orientwalt/tendermint/privval"
+	"github.com/orientwalt/tendermint/proxy"
+	sm "github.com/orientwalt/tendermint/state"
+	"github.com/orientwalt/tendermint/types"
 )
 
 // WALGenerateNBlocks generates a consensus WAL. It does this by spinning up a
@@ -47,16 +45,14 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	if err != nil {
 		return errors.Wrap(err, "failed to read genesis file")
 	}
+	stateDB := db.NewMemDB()
 	blockStoreDB := db.NewMemDB()
-	stateDB := blockStoreDB
 	state, err := sm.MakeGenesisState(genDoc)
 	if err != nil {
 		return errors.Wrap(err, "failed to make genesis state")
 	}
 	state.Version.Consensus.App = kvstore.ProtocolVersion
-	sm.SaveState(stateDB, state)
-	blockStore := store.NewBlockStore(blockStoreDB)
-
+	blockStore := bc.NewBlockStore(blockStoreDB)
 	proxyApp := proxy.NewAppConns(proxy.NewLocalClientCreator(app))
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
@@ -70,7 +66,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 		return errors.Wrap(err, "failed to start event bus")
 	}
 	defer eventBus.Stop()
-	mempool := mock.Mempool{}
+	mempool := sm.MockMempool{}
 	evpool := sm.MockEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 	consensusState := NewConsensusState(config.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)

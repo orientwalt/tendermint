@@ -8,11 +8,11 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	amino "github.com/tendermint/go-amino"
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/secp256k1"
-	"github.com/tendermint/tendermint/version"
+	abci "github.com/orientwalt/tendermint/abci/types"
+	"github.com/orientwalt/tendermint/crypto"
+	"github.com/orientwalt/tendermint/crypto/ed25519"
+	"github.com/orientwalt/tendermint/crypto/secp256k1"
+	"github.com/orientwalt/tendermint/version"
 )
 
 func TestABCIPubKey(t *testing.T) {
@@ -90,7 +90,7 @@ func TestABCIHeader(t *testing.T) {
 		height, numTxs,
 		[]byte("lastCommitHash"), []byte("dataHash"), []byte("evidenceHash"),
 	)
-	protocolVersion := version.Consensus{Block: 7, App: 8}
+	protocolVersion := version.Consensus{7, 8}
 	timestamp := time.Now()
 	lastBlockID := BlockID{
 		Hash: []byte("hash"),

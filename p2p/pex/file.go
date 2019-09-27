@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	cmn "github.com/orientwalt/tendermint/libs/common"
 )
 
 /* Loading & Saving */
@@ -53,14 +53,14 @@ func (a *addrBook) loadFromFile(filePath string) bool {
 	// Load addrBookJSON{}
 	r, err := os.Open(filePath)
 	if err != nil {
-		panic(fmt.Sprintf("Error opening file %s: %v", filePath, err))
+		cmn.PanicCrisis(fmt.Sprintf("Error opening file %s: %v", filePath, err))
 	}
 	defer r.Close() // nolint: errcheck
 	aJSON := &addrBookJSON{}
 	dec := json.NewDecoder(r)
 	err = dec.Decode(aJSON)
 	if err != nil {
-		panic(fmt.Sprintf("Error reading file %s: %v", filePath, err))
+		cmn.PanicCrisis(fmt.Sprintf("Error reading file %s: %v", filePath, err))
 	}
 
 	// Restore all the fields...

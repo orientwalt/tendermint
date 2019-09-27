@@ -4,13 +4,13 @@ import (
 	"net"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	p2pconn "github.com/tendermint/tendermint/p2p/conn"
+	"github.com/orientwalt/tendermint/crypto/ed25519"
+	p2pconn "github.com/orientwalt/tendermint/p2p/conn"
 )
 
 const (
-	defaultTimeoutAcceptSeconds   = 3
-	defaultPingPeriodMilliseconds = 100
+	defaultTimeoutAcceptSeconds    = 3
+	defaultTimeoutReadWriteSeconds = 3
 )
 
 // timeoutError can be used to check if an error returned from the netp package

@@ -13,9 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/libs/cli"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	cfg "github.com/orientwalt/tendermint/config"
+	"github.com/orientwalt/tendermint/libs/cli"
+	cmn "github.com/orientwalt/tendermint/libs/common"
 )
 
 var (
@@ -165,7 +165,7 @@ func TestRootConfig(t *testing.T) {
 func WriteConfigVals(dir string, vals map[string]string) error {
 	data := ""
 	for k, v := range vals {
-		data += fmt.Sprintf("%s = \"%s\"\n", k, v)
+		data = data + fmt.Sprintf("%s = \"%s\"\n", k, v)
 	}
 	cfile := filepath.Join(dir, "config.toml")
 	return ioutil.WriteFile(cfile, []byte(data), 0666)

@@ -6,7 +6,8 @@ import (
 
 	"golang.org/x/crypto/nacl/secretbox"
 
-	"github.com/tendermint/tendermint/crypto"
+	"github.com/orientwalt/tendermint/crypto"
+	cmn "github.com/orientwalt/tendermint/libs/common"
 )
 
 // TODO, make this into a struct that implements crypto.Symmetric.
@@ -18,7 +19,7 @@ const secretLen = 32
 // The ciphertext is (secretbox.Overhead + 24) bytes longer than the plaintext.
 func EncryptSymmetric(plaintext []byte, secret []byte) (ciphertext []byte) {
 	if len(secret) != secretLen {
-		panic(fmt.Sprintf("Secret must be 32 bytes long, got len %v", len(secret)))
+		cmn.PanicSanity(fmt.Sprintf("Secret must be 32 bytes long, got len %v", len(secret)))
 	}
 	nonce := crypto.CRandBytes(nonceLen)
 	nonceArr := [nonceLen]byte{}
@@ -35,7 +36,7 @@ func EncryptSymmetric(plaintext []byte, secret []byte) (ciphertext []byte) {
 // The ciphertext is (secretbox.Overhead + 24) bytes longer than the plaintext.
 func DecryptSymmetric(ciphertext []byte, secret []byte) (plaintext []byte, err error) {
 	if len(secret) != secretLen {
-		panic(fmt.Sprintf("Secret must be 32 bytes long, got len %v", len(secret)))
+		cmn.PanicSanity(fmt.Sprintf("Secret must be 32 bytes long, got len %v", len(secret)))
 	}
 	if len(ciphertext) <= secretbox.Overhead+nonceLen {
 		return nil, errors.New("Ciphertext is too short")

@@ -26,7 +26,7 @@
 //     for {
 //         select {
 //         case msg <- subscription.Out():
-//             // handle msg.Data() and msg.Events()
+//             // handle msg.Data() and msg.Tags()
 //         case <-subscription.Cancelled():
 //             return subscription.Err()
 //         }
@@ -39,7 +39,7 @@ import (
 	"errors"
 	"sync"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	cmn "github.com/orientwalt/tendermint/libs/common"
 )
 
 type operation int
@@ -61,14 +61,9 @@ var (
 	ErrAlreadySubscribed = errors.New("already subscribed")
 )
 
-// Query defines an interface for a query to be used for subscribing. A query
-// matches against a map of events. Each key in this map is a composite of the
-// even type and an attribute key (e.g. "{eventType}.{eventAttrKey}") and the
-// values are the event values that are contained under that relationship. This
-// allows event types to repeat themselves with the same set of keys and
-// different values.
+// Query defines an interface for a query to be used for subscribing.
 type Query interface {
-	Matches(events map[string][]string) bool
+	Matches(tags map[string]string) bool
 	String() string
 }
 
@@ -81,12 +76,12 @@ type cmd struct {
 	clientID     string
 
 	// publish
-	msg    interface{}
-	events map[string][]string
+	msg  interface{}
+	tags map[string]string
 }
 
 // Server allows clients to subscribe/unsubscribe for messages, publishing
-// messages with or without events, and manages internal state.
+// messages with or without tags, and manages internal state.
 type Server struct {
 	cmn.BaseService
 
@@ -263,15 +258,15 @@ func (s *Server) NumClientSubscriptions(clientID string) int {
 // Publish publishes the given message. An error will be returned to the caller
 // if the context is canceled.
 func (s *Server) Publish(ctx context.Context, msg interface{}) error {
-	return s.PublishWithEvents(ctx, msg, make(map[string][]string))
+	return s.PublishWithTags(ctx, msg, make(map[string]string))
 }
 
-// PublishWithEvents publishes the given message with the set of events. The set
-// is matched with clients queries. If there is a match, the message is sent to
+// PublishWithTags publishes the given message with the set of tags. The set is
+// matched with clients queries. If there is a match, the message is sent to
 // the client.
-func (s *Server) PublishWithEvents(ctx context.Context, msg interface{}, events map[string][]string) error {
+func (s *Server) PublishWithTags(ctx context.Context, msg interface{}, tags map[string]string) error {
 	select {
-	case s.cmds <- cmd{op: pub, msg: msg, events: events}:
+	case s.cmds <- cmd{op: pub, msg: msg, tags: tags}:
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
@@ -330,7 +325,7 @@ loop:
 		case sub:
 			state.add(cmd.clientID, cmd.query, cmd.subscription)
 		case pub:
-			state.send(cmd.msg, cmd.events)
+			state.send(cmd.msg, cmd.tags)
 		}
 	}
 }
@@ -397,18 +392,18 @@ func (state *state) removeAll(reason error) {
 	}
 }
 
-func (state *state) send(msg interface{}, events map[string][]string) {
+func (state *state) send(msg interface{}, tags map[string]string) {
 	for qStr, clientSubscriptions := range state.subscriptions {
 		q := state.queries[qStr].q
-		if q.Matches(events) {
+		if q.Matches(tags) {
 			for clientID, subscription := range clientSubscriptions {
 				if cap(subscription.out) == 0 {
 					// block on unbuffered channel
-					subscription.out <- NewMessage(msg, events)
+					subscription.out <- Message{msg, tags}
 				} else {
 					// don't block on buffered channels
 					select {
-					case subscription.out <- NewMessage(msg, events):
+					case subscription.out <- Message{msg, tags}:
 					default:
 						state.remove(clientID, qStr, ErrOutOfCapacity)
 					}

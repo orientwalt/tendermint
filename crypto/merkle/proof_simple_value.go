@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/crypto/tmhash"
+	cmn "github.com/orientwalt/tendermint/libs/common"
 )
 
 const ProofOpSimpleValue = "simple:v"

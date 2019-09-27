@@ -10,16 +10,15 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	dbm "github.com/tendermint/tm-db"
 
-	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/mock"
-	"github.com/tendermint/tendermint/proxy"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
+	bc "github.com/orientwalt/tendermint/blockchain"
+	cfg "github.com/orientwalt/tendermint/config"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	dbm "github.com/orientwalt/tendermint/libs/db"
+	"github.com/orientwalt/tendermint/libs/log"
+	"github.com/orientwalt/tendermint/proxy"
+	sm "github.com/orientwalt/tendermint/state"
+	"github.com/orientwalt/tendermint/types"
 )
 
 const (
@@ -231,8 +230,10 @@ func (pb *playback) replayConsoleLoop() int {
 					fmt.Println("back takes an integer argument")
 				} else if i > pb.count {
 					fmt.Printf("argument to back must not be larger than the current count (%d)\n", pb.count)
-				} else if err := pb.replayReset(i, newStepSub); err != nil {
-					pb.cs.Logger.Error("Replay reset error", "err", err)
+				} else {
+					if err := pb.replayReset(i, newStepSub); err != nil {
+						pb.cs.Logger.Error("Replay reset error", "err", err)
+					}
 				}
 			}
 
@@ -278,7 +279,7 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 	dbType := dbm.DBBackendType(config.DBBackend)
 	// Get BlockStore
 	blockStoreDB := dbm.NewDB("blockstore", dbType, config.DBDir())
-	blockStore := store.NewBlockStore(blockStoreDB)
+	blockStore := bc.NewBlockStore(blockStoreDB)
 
 	// Get State
 	stateDB := dbm.NewDB("state", dbType, config.DBDir())
@@ -311,7 +312,7 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 		cmn.Exit(fmt.Sprintf("Error on handshake: %v", err))
 	}
 
-	mempool, evpool := mock.Mempool{}, sm.MockEvidencePool{}
+	mempool, evpool := sm.MockMempool{}, sm.MockEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
 	consensusState := NewConsensusState(csConfig, state.Copy(), blockExec,

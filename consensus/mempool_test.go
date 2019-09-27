@@ -9,17 +9,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/tendermint/tendermint/abci/example/code"
-	abci "github.com/tendermint/tendermint/abci/types"
-	mempl "github.com/tendermint/tendermint/mempool"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
+	"github.com/orientwalt/tendermint/abci/example/code"
+	abci "github.com/orientwalt/tendermint/abci/types"
+	sm "github.com/orientwalt/tendermint/state"
+	"github.com/orientwalt/tendermint/types"
 )
 
 // for testing
-func assertMempool(txn txNotifier) mempl.Mempool {
-	return txn.(mempl.Mempool)
+func assertMempool(txn txNotifier) sm.Mempool {
+	return txn.(sm.Mempool)
 }
 
 func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
@@ -82,14 +80,14 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	ensureNewRound(newRoundCh, height, round) // first round at first height
 	ensureNewEventOnChannel(newBlockCh)       // first block gets committed
 
-	height++ // moving to the next height
+	height = height + 1 // moving to the next height
 	round = 0
 
 	ensureNewRound(newRoundCh, height, round) // first round at next height
 	deliverTxsRange(cs, 0, 1)                 // we deliver txs, but dont set a proposal so we get the next round
 	ensureNewTimeout(timeoutCh, height, round, cs.config.TimeoutPropose.Nanoseconds())
 
-	round++                                   // moving to the next round
+	round = round + 1                         // moving to the next round
 	ensureNewRound(newRoundCh, height, round) // wait for the next round
 	ensureNewEventOnChannel(newBlockCh)       // now we can commit the block
 }
@@ -108,9 +106,7 @@ func deliverTxsRange(cs *ConsensusState, start, end int) {
 
 func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	state, privVals := randGenesisState(1, false, 10)
-	blockDB := dbm.NewMemDB()
-	cs := newConsensusStateWithConfigAndBlockStore(config, state, privVals[0], NewCounterApplication(), blockDB)
-	sm.SaveState(blockDB, state)
+	cs := newConsensusState(state, privVals[0], NewCounterApplication())
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
 
@@ -133,15 +129,13 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 func TestMempoolRmBadTx(t *testing.T) {
 	state, privVals := randGenesisState(1, false, 10)
 	app := NewCounterApplication()
-	blockDB := dbm.NewMemDB()
-	cs := newConsensusStateWithConfigAndBlockStore(config, state, privVals[0], app, blockDB)
-	sm.SaveState(blockDB, state)
+	cs := newConsensusState(state, privVals[0], app)
 
 	// increment the counter by 1
 	txBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(txBytes, uint64(0))
 
-	resDeliver := app.DeliverTx(abci.RequestDeliverTx{Tx: txBytes})
+	resDeliver := app.DeliverTx(txBytes)
 	assert.False(t, resDeliver.IsErr(), fmt.Sprintf("expected no error. got %v", resDeliver))
 
 	resCommit := app.Commit()
@@ -155,14 +149,12 @@ func TestMempoolRmBadTx(t *testing.T) {
 		// and the tx should get removed from the pool
 		err := assertMempool(cs.txNotifier).CheckTx(txBytes, func(r *abci.Response) {
 			if r.GetCheckTx().Code != code.CodeTypeBadNonce {
-				t.Errorf("expected checktx to return bad nonce, got %v", r)
-				return
+				t.Fatalf("expected checktx to return bad nonce, got %v", r)
 			}
 			checkTxRespCh <- struct{}{}
 		})
 		if err != nil {
-			t.Errorf("Error after CheckTx: %v", err)
-			return
+			t.Fatalf("Error after CheckTx: %v", err)
 		}
 
 		// check for the tx
@@ -182,8 +174,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 	case <-checkTxRespCh:
 		// success
 	case <-ticker:
-		t.Errorf("Timed out waiting for tx to return")
-		return
+		t.Fatalf("Timed out waiting for tx to return")
 	}
 
 	// Wait until the tx is removed
@@ -192,8 +183,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 	case <-emptyMempoolCh:
 		// success
 	case <-ticker:
-		t.Errorf("Timed out waiting for tx to be removed")
-		return
+		t.Fatalf("Timed out waiting for tx to be removed")
 	}
 }
 
@@ -213,8 +203,8 @@ func (app *CounterApplication) Info(req abci.RequestInfo) abci.ResponseInfo {
 	return abci.ResponseInfo{Data: fmt.Sprintf("txs:%v", app.txCount)}
 }
 
-func (app *CounterApplication) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
-	txValue := txAsUint64(req.Tx)
+func (app *CounterApplication) DeliverTx(tx []byte) abci.ResponseDeliverTx {
+	txValue := txAsUint64(tx)
 	if txValue != uint64(app.txCount) {
 		return abci.ResponseDeliverTx{
 			Code: code.CodeTypeBadNonce,
@@ -224,8 +214,8 @@ func (app *CounterApplication) DeliverTx(req abci.RequestDeliverTx) abci.Respons
 	return abci.ResponseDeliverTx{Code: code.CodeTypeOK}
 }
 
-func (app *CounterApplication) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
-	txValue := txAsUint64(req.Tx)
+func (app *CounterApplication) CheckTx(tx []byte) abci.ResponseCheckTx {
+	txValue := txAsUint64(tx)
 	if txValue != uint64(app.mempoolTxCount) {
 		return abci.ResponseCheckTx{
 			Code: code.CodeTypeBadNonce,

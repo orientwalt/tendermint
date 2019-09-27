@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tendermint/tendermint/types"
+	"github.com/orientwalt/tendermint/types"
 )
 
 // Waiter is informed of current height, decided whether to quit early
@@ -15,7 +15,7 @@ type Waiter func(delta int64) (abort error)
 // but you can plug in another one
 func DefaultWaitStrategy(delta int64) (abort error) {
 	if delta > 10 {
-		return errors.Errorf("waiting for %d blocks... aborting", delta)
+		return errors.Errorf("Waiting for %d blocks... aborting", delta)
 	} else if delta > 0 {
 		// estimate of wait time....
 		// wait half a second for the next block (in progress)

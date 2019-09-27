@@ -1,7 +1,5 @@
 #! /bin/bash
 
-export GO111MODULE=on
-
 if [[ "$GRPC_BROADCAST_TX" == "" ]]; then
 	GRPC_BROADCAST_TX=""
 fi
@@ -40,7 +38,7 @@ if [[ "$GRPC_BROADCAST_TX" != "" ]]; then
 		rm grpc_client
 	fi
 	echo "... building grpc_client"
-	go build -mod=readonly -o grpc_client grpc_client.go
+	go build -o grpc_client grpc_client.go
 fi
 
 function sendTx() {

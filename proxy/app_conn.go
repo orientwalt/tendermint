@@ -1,8 +1,8 @@
 package proxy
 
 import (
-	abcicli "github.com/tendermint/tendermint/abci/client"
-	"github.com/tendermint/tendermint/abci/types"
+	abcicli "github.com/orientwalt/tendermint/abci/client"
+	"github.com/orientwalt/tendermint/abci/types"
 )
 
 //----------------------------------------------------------------------------------------
@@ -15,7 +15,7 @@ type AppConnConsensus interface {
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
-	DeliverTxAsync(types.RequestDeliverTx) *abcicli.ReqRes
+	DeliverTxAsync(tx []byte) *abcicli.ReqRes
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
 	CommitSync() (*types.ResponseCommit, error)
 }
@@ -24,7 +24,7 @@ type AppConnMempool interface {
 	SetResponseCallback(abcicli.Callback)
 	Error() error
 
-	CheckTxAsync(types.RequestCheckTx) *abcicli.ReqRes
+	CheckTxAsync(tx []byte) *abcicli.ReqRes
 
 	FlushAsync() *abcicli.ReqRes
 	FlushSync() error
@@ -69,8 +69,8 @@ func (app *appConnConsensus) BeginBlockSync(req types.RequestBeginBlock) (*types
 	return app.appConn.BeginBlockSync(req)
 }
 
-func (app *appConnConsensus) DeliverTxAsync(req types.RequestDeliverTx) *abcicli.ReqRes {
-	return app.appConn.DeliverTxAsync(req)
+func (app *appConnConsensus) DeliverTxAsync(tx []byte) *abcicli.ReqRes {
+	return app.appConn.DeliverTxAsync(tx)
 }
 
 func (app *appConnConsensus) EndBlockSync(req types.RequestEndBlock) (*types.ResponseEndBlock, error) {
@@ -110,8 +110,8 @@ func (app *appConnMempool) FlushSync() error {
 	return app.appConn.FlushSync()
 }
 
-func (app *appConnMempool) CheckTxAsync(req types.RequestCheckTx) *abcicli.ReqRes {
-	return app.appConn.CheckTxAsync(req)
+func (app *appConnMempool) CheckTxAsync(tx []byte) *abcicli.ReqRes {
+	return app.appConn.CheckTxAsync(tx)
 }
 
 //------------------------------------------------

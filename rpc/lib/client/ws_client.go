@@ -14,8 +14,8 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 
 	amino "github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	types "github.com/tendermint/tendermint/rpc/lib/types"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	types "github.com/orientwalt/tendermint/rpc/lib/types"
 )
 
 const (
@@ -369,11 +369,10 @@ func (c *WSClient) writeRoutine() {
 
 	defer func() {
 		ticker.Stop()
-		c.conn.Close()
-		// err != nil {
-		// ignore error; it will trigger in tests
-		// likely because it's closing an already closed connection
-		// }
+		if err := c.conn.Close(); err != nil {
+			// ignore error; it will trigger in tests
+			// likely because it's closing an already closed connection
+		}
 		c.wg.Done()
 	}()
 
@@ -422,11 +421,10 @@ func (c *WSClient) writeRoutine() {
 // executing all reads from this goroutine.
 func (c *WSClient) readRoutine() {
 	defer func() {
-		c.conn.Close()
-		// err != nil {
-		// ignore error; it will trigger in tests
-		// likely because it's closing an already closed connection
-		// }
+		if err := c.conn.Close(); err != nil {
+			// ignore error; it will trigger in tests
+			// likely because it's closing an already closed connection
+		}
 		c.wg.Done()
 	}()
 

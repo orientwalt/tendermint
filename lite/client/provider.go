@@ -8,12 +8,12 @@ package client
 import (
 	"fmt"
 
-	log "github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/lite"
-	lerr "github.com/tendermint/tendermint/lite/errors"
-	rpcclient "github.com/tendermint/tendermint/rpc/client"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/types"
+	log "github.com/orientwalt/tendermint/libs/log"
+	"github.com/orientwalt/tendermint/lite"
+	lerr "github.com/orientwalt/tendermint/lite/errors"
+	rpcclient "github.com/orientwalt/tendermint/rpc/client"
+	ctypes "github.com/orientwalt/tendermint/rpc/core/types"
+	"github.com/orientwalt/tendermint/types"
 )
 
 // SignStatusClient combines a SignClient and StatusClient.

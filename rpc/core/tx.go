@@ -3,13 +3,13 @@ package core
 import (
 	"fmt"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	cmn "github.com/orientwalt/tendermint/libs/common"
 
-	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
-	"github.com/tendermint/tendermint/state/txindex/null"
-	"github.com/tendermint/tendermint/types"
+	tmquery "github.com/orientwalt/tendermint/libs/pubsub/query"
+	ctypes "github.com/orientwalt/tendermint/rpc/core/types"
+	rpctypes "github.com/orientwalt/tendermint/rpc/lib/types"
+	"github.com/orientwalt/tendermint/state/txindex/null"
+	"github.com/orientwalt/tendermint/types"
 )
 
 // Tx allows you to query the transaction results. `nil` could mean the
@@ -202,10 +202,7 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int
 
 	totalCount := len(results)
 	perPage = validatePerPage(perPage)
-	page, err = validatePage(page, perPage, totalCount)
-	if err != nil {
-		return nil, err
-	}
+	page = validatePage(page, perPage, totalCount)
 	skipCount := validateSkipCount(page, perPage)
 
 	apiResults := make([]*ctypes.ResultTx, cmn.MinInt(perPage, totalCount-skipCount))

@@ -1,16 +1,22 @@
 package state
 
 import (
+	"bytes"
 	"fmt"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/fail"
-	"github.com/tendermint/tendermint/libs/log"
-	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
+	abci "github.com/orientwalt/tendermint/abci/types"
+	dbm "github.com/orientwalt/tendermint/libs/db"
+	"github.com/orientwalt/tendermint/libs/fail"
+	"github.com/orientwalt/tendermint/libs/log"
+	"github.com/orientwalt/tendermint/proxy"
+	"github.com/orientwalt/tendermint/types"
+)
+
+const (
+	HaltTagKey           = "halt_blockchain"
+	HaltTagValue         = "true"
+	UpgradeFailureTagKey = "upgrade_failure"
 )
 
 //-----------------------------------------------------------------------------
@@ -31,7 +37,7 @@ type BlockExecutor struct {
 
 	// manage the mempool lock during commit
 	// and update both with block results after commit.
-	mempool mempl.Mempool
+	mempool Mempool
 	evpool  EvidencePool
 
 	logger log.Logger
@@ -49,7 +55,7 @@ func BlockExecutorWithMetrics(metrics *Metrics) BlockExecutorOption {
 
 // NewBlockExecutor returns a new BlockExecutor with a NopEventBus.
 // Call SetEventBus to provide one.
-func NewBlockExecutor(db dbm.DB, logger log.Logger, proxyApp proxy.AppConnConsensus, mempool mempl.Mempool, evpool EvidencePool, options ...BlockExecutorOption) *BlockExecutor {
+func NewBlockExecutor(db dbm.DB, logger log.Logger, proxyApp proxy.AppConnConsensus, mempool Mempool, evpool EvidencePool, options ...BlockExecutorOption) *BlockExecutor {
 	res := &BlockExecutor{
 		db:       db,
 		proxyApp: proxyApp,
@@ -65,10 +71,6 @@ func NewBlockExecutor(db dbm.DB, logger log.Logger, proxyApp proxy.AppConnConsen
 	}
 
 	return res
-}
-
-func (blockExec *BlockExecutor) DB() dbm.DB {
-	return blockExec.db
 }
 
 // SetEventBus - sets the event bus for publishing block related events.
@@ -121,7 +123,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	}
 
 	startTime := time.Now().UnixNano()
-	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, state.LastValidators, blockExec.db)
 	endTime := time.Now().UnixNano()
 	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
 	if err != nil {
@@ -155,8 +157,12 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 		return state, fmt.Errorf("Commit failed for application: %v", err)
 	}
 
+	if tag, ok := abci.GetTagByKey(abciResponses.EndBlock.Tags, HaltTagKey); ok && bytes.Equal(tag.Value, []byte(HaltTagValue)) {
+		state.Deprecated = true
+	}
+
 	// Lock mempool, commit app state, update mempoool.
-	appHash, err := blockExec.Commit(state, block, abciResponses.DeliverTx)
+	appHash, err := blockExec.Commit(state, block)
 	if err != nil {
 		return state, fmt.Errorf("Commit failed for application: %v", err)
 	}
@@ -188,7 +194,6 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 func (blockExec *BlockExecutor) Commit(
 	state State,
 	block *types.Block,
-	deliverTxResponses []*abci.ResponseDeliverTx,
 ) ([]byte, error) {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
@@ -223,7 +228,6 @@ func (blockExec *BlockExecutor) Commit(
 	err = blockExec.mempool.Update(
 		block.Height,
 		block.Txs,
-		deliverTxResponses,
 		TxPreCheck(state),
 		TxPostCheck(state),
 	)
@@ -240,6 +244,7 @@ func execBlockOnProxyApp(
 	logger log.Logger,
 	proxyAppConn proxy.AppConnConsensus,
 	block *types.Block,
+	lastValSet *types.ValidatorSet,
 	stateDB dbm.DB,
 ) (*ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
@@ -249,7 +254,8 @@ func execBlockOnProxyApp(
 
 	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
-		if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
+		switch r := res.Value.(type) {
+		case *abci.Response_DeliverTx:
 			// TODO: make use of res.Log
 			// TODO: make use of this info
 			// Blocks may include invalid txs.
@@ -266,7 +272,7 @@ func execBlockOnProxyApp(
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
 
-	commitInfo, byzVals := getBeginBlockValidatorInfo(block, stateDB)
+	commitInfo, byzVals := getBeginBlockValidatorInfo(block, lastValSet, stateDB)
 
 	// Begin block
 	var err error
@@ -283,7 +289,7 @@ func execBlockOnProxyApp(
 
 	// Run txs of block.
 	for _, tx := range block.Txs {
-		proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
+		proxyAppConn.DeliverTxAsync(tx)
 		if err := proxyAppConn.Error(); err != nil {
 			return nil, err
 		}
@@ -296,36 +302,31 @@ func execBlockOnProxyApp(
 		return nil, err
 	}
 
+	if tag, ok := abci.GetTagByKey(abciResponses.EndBlock.Tags, UpgradeFailureTagKey); ok {
+		return nil, fmt.Errorf(string(tag.Value))
+	}
+
 	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
 
 	return abciResponses, nil
 }
 
-func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCommitInfo, []abci.Evidence) {
-	voteInfos := make([]abci.VoteInfo, block.LastCommit.Size())
-	byzVals := make([]abci.Evidence, len(block.Evidence.Evidence))
-	var lastValSet *types.ValidatorSet
-	var err error
+func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorSet, stateDB dbm.DB) (abci.LastCommitInfo, []abci.Evidence) {
+
+	// Sanity check that commit length matches validator set size -
+	// only applies after first block
 	if block.Height > 1 {
-		lastValSet, err = LoadValidators(stateDB, block.Height-1)
-		if err != nil {
-			panic(err) // shouldn't happen
-		}
-
-		// Sanity check that commit length matches validator set size -
-		// only applies after first block
-
-		precommitLen := block.LastCommit.Size()
+		precommitLen := len(block.LastCommit.Precommits)
 		valSetLen := len(lastValSet.Validators)
 		if precommitLen != valSetLen {
 			// sanity check
 			panic(fmt.Sprintf("precommit length (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
 				precommitLen, valSetLen, block.Height, block.LastCommit.Precommits, lastValSet.Validators))
 		}
-	} else {
-		lastValSet = types.NewValidatorSet(nil)
 	}
 
+	// Collect the vote info (list of validators and whether or not they signed).
+	voteInfos := make([]abci.VoteInfo, len(lastValSet.Validators))
 	for i, val := range lastValSet.Validators {
 		var vote *types.CommitSig
 		if i < len(block.LastCommit.Precommits) {
@@ -338,6 +339,12 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 		voteInfos[i] = voteInfo
 	}
 
+	commitInfo := abci.LastCommitInfo{
+		Round: int32(block.LastCommit.Round()),
+		Votes: voteInfos,
+	}
+
+	byzVals := make([]abci.Evidence, len(block.Evidence.Evidence))
 	for i, ev := range block.Evidence.Evidence {
 		// We need the validator set. We already did this in validateBlock.
 		// TODO: Should we instead cache the valset in the evidence itself and add
@@ -349,10 +356,6 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 		byzVals[i] = types.TM2PB.Evidence(ev, valset, block.Time)
 	}
 
-	commitInfo := abci.LastCommitInfo{
-		Round: int32(block.LastCommit.Round()),
-		Votes: voteInfos,
-	}
 	return commitInfo, byzVals
 
 }
@@ -481,9 +484,10 @@ func ExecCommitBlock(
 	appConnConsensus proxy.AppConnConsensus,
 	block *types.Block,
 	logger log.Logger,
+	lastValSet *types.ValidatorSet,
 	stateDB dbm.DB,
 ) ([]byte, error) {
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, stateDB)
+	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, lastValSet, stateDB)
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err

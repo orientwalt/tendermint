@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
+	"github.com/orientwalt/tendermint/crypto"
+	dbm "github.com/orientwalt/tendermint/libs/db"
+	"github.com/orientwalt/tendermint/types"
 )
 
 //-----------------------------------------------------
@@ -94,7 +94,10 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 		}
 	} else {
 		if len(block.LastCommit.Precommits) != state.LastValidators.Size() {
-			return types.NewErrInvalidCommitPrecommits(state.LastValidators.Size(), len(block.LastCommit.Precommits))
+			return fmt.Errorf("Invalid block commit size. Expected %v, got %v",
+				state.LastValidators.Size(),
+				len(block.LastCommit.Precommits),
+			)
 		}
 		err := state.LastValidators.VerifyCommit(
 			state.ChainID, state.LastBlockID, block.Height-1, block.LastCommit)

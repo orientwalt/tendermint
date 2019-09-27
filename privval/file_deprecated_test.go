@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/privval"
+	"github.com/orientwalt/tendermint/privval"
 )
 
 const oldPrivvalContent = `{
@@ -67,11 +67,11 @@ func assertEqualPV(t *testing.T, oldPV *privval.OldFilePV, newPV *privval.FilePV
 }
 
 func initTmpOldFile(t *testing.T) string {
-	tmpFile, err := ioutil.TempFile("", "priv_validator_*.json")
+	tmpfile, err := ioutil.TempFile("", "priv_validator_*.json")
 	require.NoError(t, err)
-	t.Logf("created test file %s", tmpFile.Name())
-	_, err = tmpFile.WriteString(oldPrivvalContent)
+	t.Logf("created test file %s", tmpfile.Name())
+	_, err = tmpfile.WriteString(oldPrivvalContent)
 	require.NoError(t, err)
 
-	return tmpFile.Name()
+	return tmpfile.Name()
 }

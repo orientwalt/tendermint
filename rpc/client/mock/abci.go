@@ -1,12 +1,12 @@
 package mock
 
 import (
-	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/rpc/client"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/types"
+	abci "github.com/orientwalt/tendermint/abci/types"
+	cmn "github.com/orientwalt/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/proxy"
+	"github.com/orientwalt/tendermint/rpc/client"
+	ctypes "github.com/orientwalt/tendermint/rpc/core/types"
+	"github.com/orientwalt/tendermint/types"
 )
 
 // ABCIApp will send all abci related request to the named app,
@@ -45,29 +45,29 @@ func (a ABCIApp) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts clien
 // TODO: Make it wait for a commit and set res.Height appropriately.
 func (a ABCIApp) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	res := ctypes.ResultBroadcastTxCommit{}
-	res.CheckTx = a.App.CheckTx(abci.RequestCheckTx{Tx: tx})
+	res.CheckTx = a.App.CheckTx(tx)
 	if res.CheckTx.IsErr() {
 		return &res, nil
 	}
-	res.DeliverTx = a.App.DeliverTx(abci.RequestDeliverTx{Tx: tx})
+	res.DeliverTx = a.App.DeliverTx(tx)
 	res.Height = -1 // TODO
 	return &res, nil
 }
 
 func (a ABCIApp) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	c := a.App.CheckTx(abci.RequestCheckTx{Tx: tx})
+	c := a.App.CheckTx(tx)
 	// and this gets written in a background thread...
 	if !c.IsErr() {
-		go func() { a.App.DeliverTx(abci.RequestDeliverTx{Tx: tx}) }() // nolint: errcheck
+		go func() { a.App.DeliverTx(tx) }() // nolint: errcheck
 	}
 	return &ctypes.ResultBroadcastTx{Code: c.Code, Data: c.Data, Log: c.Log, Hash: tx.Hash()}, nil
 }
 
 func (a ABCIApp) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	c := a.App.CheckTx(abci.RequestCheckTx{Tx: tx})
+	c := a.App.CheckTx(tx)
 	// and this gets written in a background thread...
 	if !c.IsErr() {
-		go func() { a.App.DeliverTx(abci.RequestDeliverTx{Tx: tx}) }() // nolint: errcheck
+		go func() { a.App.DeliverTx(tx) }() // nolint: errcheck
 	}
 	return &ctypes.ResultBroadcastTx{Code: c.Code, Data: c.Data, Log: c.Log, Hash: tx.Hash()}, nil
 }

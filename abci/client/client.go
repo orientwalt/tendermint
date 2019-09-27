@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/orientwalt/tendermint/abci/types"
+	cmn "github.com/orientwalt/tendermint/libs/common"
 )
 
 const (
@@ -28,8 +28,8 @@ type Client interface {
 	EchoAsync(msg string) *ReqRes
 	InfoAsync(types.RequestInfo) *ReqRes
 	SetOptionAsync(types.RequestSetOption) *ReqRes
-	DeliverTxAsync(types.RequestDeliverTx) *ReqRes
-	CheckTxAsync(types.RequestCheckTx) *ReqRes
+	DeliverTxAsync(tx []byte) *ReqRes
+	CheckTxAsync(tx []byte) *ReqRes
 	QueryAsync(types.RequestQuery) *ReqRes
 	CommitAsync() *ReqRes
 	InitChainAsync(types.RequestInitChain) *ReqRes
@@ -40,8 +40,8 @@ type Client interface {
 	EchoSync(msg string) (*types.ResponseEcho, error)
 	InfoSync(types.RequestInfo) (*types.ResponseInfo, error)
 	SetOptionSync(types.RequestSetOption) (*types.ResponseSetOption, error)
-	DeliverTxSync(types.RequestDeliverTx) (*types.ResponseDeliverTx, error)
-	CheckTxSync(types.RequestCheckTx) (*types.ResponseCheckTx, error)
+	DeliverTxSync(tx []byte) (*types.ResponseDeliverTx, error)
+	CheckTxSync(tx []byte) (*types.ResponseCheckTx, error)
 	QuerySync(types.RequestQuery) (*types.ResponseQuery, error)
 	CommitSync() (*types.ResponseCommit, error)
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)

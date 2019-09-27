@@ -35,14 +35,6 @@ module.exports = {
         ]
       },
       {
-        title: "Guides",
-        collapsable: false,
-        children: [
-          "/guides/go-built-in",
-          "/guides/go"
-        ]
-      },
-      {
         title: "Apps",
         collapsable: false,
         children: [
@@ -52,7 +44,7 @@ module.exports = {
           "/app-dev/app-development",
           "/app-dev/subscribing-to-events-via-websocket",
           "/app-dev/indexing-transactions",
-          "/spec/abci/abci",
+          "/app-dev/abci-spec",
           "/app-dev/ecosystem"
         ]
       },
