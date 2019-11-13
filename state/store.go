@@ -70,6 +70,10 @@ func LoadState(db dbm.DB) State {
 	return loadState(db, stateKey)
 }
 
+func LoadPreState(db dbm.DB) State {
+	return loadState(db, statePreKey)
+}
+
 func loadState(db dbm.DB, key []byte) (state State) {
 	buf := db.Get(key)
 	if len(buf) == 0 {
