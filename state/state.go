@@ -13,7 +13,8 @@ import (
 
 // database keys
 var (
-	stateKey = []byte("stateKey")
+	stateKey    = []byte("stateKey")
+	statePreKey = []byte("statePreKey") //added
 )
 
 //-----------------------------------------------------------------------------
@@ -80,6 +81,8 @@ type State struct {
 
 	// the latest AppHash we've received from calling abci.Commit()
 	AppHash []byte
+
+	Deprecated bool // added
 }
 
 // Copy makes a copy of the State for mutating.

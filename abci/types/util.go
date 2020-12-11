@@ -3,6 +3,9 @@ package types
 import (
 	"bytes"
 	"sort"
+
+	kv "github.com/tendermint/tendermint/libs/kv"
+	// "github.com/tendermint/tmlibs/common"
 )
 
 //------------------------------------------------------------------------------
@@ -31,4 +34,17 @@ func (v ValidatorUpdates) Swap(i, j int) {
 	v1 := v[i]
 	v[i] = v[j]
 	v[j] = v1
+}
+
+// added by junying, 2020-12-09
+func GetEventByKey(events []Event, key string) (Event, kv.Pair, bool) {
+	// tags []common.KVPair
+	for _, event := range events {
+		for _, attribute := range event.GetAttributes() {
+			if bytes.Equal(attribute.GetKey(), []byte(key)) {
+				return event, attribute, true
+			}
+		}
+	}
+	return Event{}, kv.Pair{}, false
 }

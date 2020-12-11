@@ -1,6 +1,7 @@
 package state
 
 import (
+	"bytes"
 	"fmt"
 	"time"
 
@@ -12,6 +13,12 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+)
+
+const (
+	HaltTagKey           = "halt_blockchain"
+	HaltTagValue         = "true"
+	UpgradeFailureTagKey = "upgrade_failure"
 )
 
 //-----------------------------------------------------------------------------
@@ -165,6 +172,10 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
+	// junying-todo
+	if _, attribute, ok := abci.GetEventByKey(abciResponses.EndBlock.Events, HaltTagKey); ok && bytes.Equal(attribute.GetValue(), []byte(HaltTagValue)) {
+		state.Deprecated = true
+	}
 
 	// Lock mempool, commit app state, update mempoool.
 	appHash, retainHeight, err := blockExec.Commit(state, block, abciResponses.DeliverTxs)
@@ -305,6 +316,11 @@ func execBlockOnProxyApp(
 	if err != nil {
 		logger.Error("Error in proxyAppConn.EndBlock", "err", err)
 		return nil, err
+	}
+
+	// junying-todo
+	if _, attribute, ok := abci.GetEventByKey(abciResponses.EndBlock.Events, UpgradeFailureTagKey); ok {
+		return nil, fmt.Errorf(string(attribute.GetValue()))
 	}
 
 	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)

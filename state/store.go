@@ -72,6 +72,11 @@ func LoadState(db dbm.DB) State {
 	return loadState(db, stateKey)
 }
 
+// junying-todo
+func LoadPreState(db dbm.DB) State {
+	return loadState(db, statePreKey)
+}
+
 func loadState(db dbm.DB, key []byte) (state State) {
 	buf, err := db.Get(key)
 	if err != nil {
