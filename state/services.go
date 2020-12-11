@@ -22,6 +22,7 @@ type BlockStore interface {
 	LoadBlock(height int64) *types.Block
 
 	SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
+	RetreatLastBlock() // junying-todo
 
 	PruneBlocks(height int64) (uint64, error)
 
