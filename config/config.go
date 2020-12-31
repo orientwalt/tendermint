@@ -190,6 +190,9 @@ type BaseConfig struct {
 	// If true, query the ABCI app on connecting to a new peer
 	// so the app can decide if we should keep the connection or not
 	FilterPeers bool `mapstructure:"filter_peers"` // false
+
+	// by yqq 2020-12-28
+	ReplayHeight int64 `mapstructure:"replay_height"`
 }
 
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
@@ -209,6 +212,7 @@ func DefaultBaseConfig() BaseConfig {
 		FilterPeers:        false,
 		DBBackend:          "leveldb",
 		DBPath:             "data",
+		ReplayHeight:       -1,
 	}
 }
 
