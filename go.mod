@@ -1,4 +1,4 @@
-module github.com/orientwalt/tendermint
+module github.com/tendermint/tendermint
 
 go 1.12
 
@@ -23,7 +23,7 @@ require (
 	github.com/stretchr/testify v1.3.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tendermint/go-amino v0.15.1
-	github.com/tendermint/tendermint v0.31.5
+	// github.com/tendermint/tendermint v0.31.5
 	golang.org/x/crypto v0.0.0-20191112222119-e1110fd1c708
 	golang.org/x/net v0.0.0-20191112182307-2180aed22343
 	google.golang.org/grpc v1.25.1
