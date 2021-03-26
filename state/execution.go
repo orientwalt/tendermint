@@ -152,6 +152,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	SaveABCIResponses(blockExec.db, block.Height, abciResponses)
 
 	fail.Fail() // XXX
+	preState := state.Copy()
 
 	// validate the validator updates and convert to tendermint types
 	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
@@ -191,6 +192,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	// Update the app hash and save the state.
 	state.AppHash = appHash
 	SaveState(blockExec.db, state)
+	SavePreState(blockExec.db, preState)
 
 	fail.Fail() // XXX
 

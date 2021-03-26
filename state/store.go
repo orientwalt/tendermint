@@ -103,6 +103,10 @@ func SaveState(db dbm.DB, state State) {
 	saveState(db, state, stateKey)
 }
 
+func SavePreState(db dbm.DB, state State) {
+	saveState(db, state, statePreKey)
+}
+
 func saveState(db dbm.DB, state State, key []byte) {
 	nextHeight := state.LastBlockHeight + 1
 	// If first block, save validators for block 1.
