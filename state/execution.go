@@ -332,6 +332,19 @@ func execBlockOnProxyApp(
 
 func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCommitInfo, []abci.Evidence) {
 	voteInfos := make([]abci.VoteInfo, block.LastCommit.Size())
+
+	// 2021-01-04 fix issue(bug): https://github.com/orientwalt/htdf/issues/19
+	// For replaying blocks, load history validator set
+	// lastValSet
+	// state := LoadState(stateDB)
+	// if block.Height > 1 && block.Height != state.LastBlockHeight+1 {
+	// 	var err error
+	// 	lastValSet, err = LoadValidators(stateDB, block.Height-1)
+	// 	if err != nil {
+	// 		panic(fmt.Sprintf("failed to load validatorset at heith %d", state.LastBlockHeight))
+	// 	}
+	// }
+
 	// block.Height=1 -> LastCommitInfo.Votes are empty.
 	// Remember that the first LastCommit is intentionally empty, so it makes
 	// sense for LastCommitInfo.Votes to also be empty.
