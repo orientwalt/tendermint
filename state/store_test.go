@@ -110,6 +110,7 @@ func TestPruneStates(t *testing.T) {
 				}
 
 				sm.SaveState(db, sm.State{
+					InitialHeight:   1,
 					LastBlockHeight: h - 1,
 					Validators:      validatorSet,
 					NextValidators:  validatorSet,

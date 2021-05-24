@@ -70,14 +70,14 @@ func (b *Block) ValidateBasic() error {
 	}
 
 	// Validate the last commit and its hash.
-	if b.Header.Height > 1 {
-		if b.LastCommit == nil {
-			return errors.New("nil LastCommit")
-		}
-		if err := b.LastCommit.ValidateBasic(); err != nil {
-			return fmt.Errorf("wrong LastCommit: %v", err)
-		}
+	// if b.Header.Height > 1 {
+	if b.LastCommit == nil {
+		return errors.New("nil LastCommit")
 	}
+	if err := b.LastCommit.ValidateBasic(); err != nil {
+		return fmt.Errorf("wrong LastCommit: %v", err)
+	}
+	// }
 	if err := ValidateHash(b.LastCommitHash); err != nil {
 		return fmt.Errorf("wrong Header.LastCommitHash: %v", err)
 	}
