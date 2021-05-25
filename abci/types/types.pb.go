@@ -479,9 +479,17 @@ type RequestInitChain struct {
 	ConsensusParams      *ConsensusParams  `protobuf:"bytes,3,opt,name=consensus_params,json=consensusParams,proto3" json:"consensus_params,omitempty"`
 	Validators           []ValidatorUpdate `protobuf:"bytes,4,rep,name=validators,proto3" json:"validators"`
 	AppStateBytes        []byte            `protobuf:"bytes,5,opt,name=app_state_bytes,json=appStateBytes,proto3" json:"app_state_bytes,omitempty"`
+	InitialHeight        int64             `protobuf:"varint,6,opt,name=initial_height,json=initialHeight,proto3" json:"initial_height,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
 	XXX_sizecache        int32             `json:"-"`
+}
+
+func (m *RequestInitChain) GetInitialHeight() int64 {
+	if m != nil {
+		return m.InitialHeight
+	}
+	return 0
 }
 
 func (m *RequestInitChain) Reset()         { *m = RequestInitChain{} }

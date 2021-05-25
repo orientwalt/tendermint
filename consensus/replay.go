@@ -473,7 +473,7 @@ func (h *Handshaker) replayBlocks(
 			}
 		}
 
-		appHash, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, h.logger, h.stateDB)
+		appHash, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, h.logger, h.stateDB, h.genDoc.InitialHeight)
 		if err != nil {
 			return nil, err
 		}
