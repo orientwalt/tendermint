@@ -539,16 +539,31 @@ func (cs *State) updateToState(state sm.State) {
 
 	// Reset fields based on state.
 	validators := state.Validators
-	lastPrecommits := (*types.VoteSet)(nil)
-	if cs.CommitRound > -1 && cs.Votes != nil {
+
+	switch {
+	case state.LastBlockHeight == 0: // Very first commit should be empty.
+		cs.LastCommit = (*types.VoteSet)(nil)
+	case cs.CommitRound > -1 && cs.Votes != nil: // Otherwise, use cs.Votes
 		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
-			panic("updateToState(state) called but last Precommit round didn't have +2/3")
+			panic(fmt.Sprintf("Wanted to form a Commit, but Precommits (H/R: %d/%d) didn't have 2/3+: %v",
+				state.LastBlockHeight,
+				cs.CommitRound,
+				cs.Votes.Precommits(cs.CommitRound)))
 		}
-		lastPrecommits = cs.Votes.Precommits(cs.CommitRound)
+		cs.LastCommit = cs.Votes.Precommits(cs.CommitRound)
+	case cs.LastCommit == nil:
+		// NOTE: when Tendermint starts, it has no votes. reconstructLastCommit
+		// must be called to reconstruct LastCommit from SeenCommit.
+		panic(fmt.Sprintf("LastCommit cannot be empty after initial block (H:%d)",
+			state.LastBlockHeight+1,
+		))
 	}
 
 	// Next desired block height
 	height := state.LastBlockHeight + 1
+	if height == 1 {
+		height = state.InitialHeight + 1
+	}
 
 	// RoundState fields
 	cs.updateHeight(height)
@@ -576,7 +591,6 @@ func (cs *State) updateToState(state sm.State) {
 	cs.ValidBlockParts = nil
 	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
 	cs.CommitRound = -1
-	cs.LastCommit = lastPrecommits
 	cs.LastValidators = state.LastValidators
 	cs.TriggeredTimeoutPrecommit = false
 
@@ -883,7 +897,7 @@ func (cs *State) enterNewRound(height int64, round int) {
 // needProofBlock returns true on the first height (so the genesis app hash is signed right away)
 // and where the last block (height-1) caused the app hash to change
 func (cs *State) needProofBlock(height int64) bool {
-	if height == 1 {
+	if height == cs.state.InitialHeight {
 		return true
 	}
 
@@ -1035,7 +1049,7 @@ func (cs *State) isProposalComplete() bool {
 func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.PartSet) {
 	var commit *types.Commit
 	switch {
-	case cs.Height == 1:
+	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
 		commit = types.NewCommit(0, 0, types.BlockID{}, nil)
@@ -1736,7 +1750,18 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 				return added, err
 			}
 			cs.evpool.AddEvidence(voteErr.DuplicateVoteEvidence)
+			// var timestamp time.Time
+			// if voteErr.VoteA.Height == cs.state.InitialHeight {
+			// 	timestamp = cs.state.LastBlockTime // genesis time
+			// } else {
+			// 	timestamp = sm.MedianTime(cs.LastCommit.MakeCommit(), cs.LastValidators)
+			// }
+			// evidenceErr := cs.evpool.AddEvidence(types.NewDuplicateVoteEvidence(voteErr.VoteA, voteErr.VoteB, timestamp))
+			// if evidenceErr != nil {
+			// 	cs.Logger.Error("Failed to add evidence to the evidence pool", "err", evidenceErr)
+			// }
 			return added, err
+
 		} else if err == types.ErrVoteNonDeterministicSignature {
 			cs.Logger.Debug("Vote has non-deterministic signature", "err", err)
 		} else {
