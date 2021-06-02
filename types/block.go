@@ -36,11 +36,12 @@ const (
 
 // Block defines the atomic unit of a Tendermint blockchain.
 type Block struct {
-	mtx        sync.Mutex
-	Header     `json:"header"`
-	Data       `json:"data"`
-	Evidence   EvidenceData `json:"evidence"`
-	LastCommit *Commit      `json:"last_commit"`
+	mtx           sync.Mutex
+	Header        `json:"header"`
+	Data          `json:"data"`
+	Evidence      EvidenceData `json:"evidence"`
+	LastCommit    *Commit      `json:"last_commit"`
+	InitialHeight int64
 }
 
 // ValidateBasic performs basic validation that doesn't involve state data.
@@ -70,14 +71,14 @@ func (b *Block) ValidateBasic() error {
 	}
 
 	// Validate the last commit and its hash.
-	// if b.Header.Height > 1 {
 	if b.LastCommit == nil {
 		return errors.New("nil LastCommit")
 	}
-	if err := b.LastCommit.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong LastCommit: %v", err)
+	if b.Header.Height > b.InitialHeight {
+		if err := b.LastCommit.ValidateBasic(); err != nil {
+			return fmt.Errorf("wrong LastCommit: %v", err)
+		}
 	}
-	// }
 	if err := ValidateHash(b.LastCommitHash); err != nil {
 		return fmt.Errorf("wrong Header.LastCommitHash: %v", err)
 	}

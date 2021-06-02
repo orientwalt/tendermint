@@ -368,7 +368,7 @@ func (cs *State) Wait() {
 
 // OpenWAL opens a file to log all consensus messages and timeouts for deterministic accountability
 func (cs *State) OpenWAL(walFile string) (WAL, error) {
-	wal, err := NewWAL(walFile)
+	wal, err := NewWAL(walFile, cs.state.InitialHeight)
 	if err != nil {
 		cs.Logger.Error("Failed to open WAL for consensus state", "wal", walFile, "err", err)
 		return nil, err
@@ -562,7 +562,7 @@ func (cs *State) updateToState(state sm.State) {
 	// Next desired block height
 	height := state.LastBlockHeight + 1
 	if height == 1 {
-		height = state.InitialHeight + 1
+		height = state.InitialHeight
 	}
 
 	// RoundState fields
@@ -1052,7 +1052,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
-		commit = types.NewCommit(0, 0, types.BlockID{}, nil)
+		commit = types.NewCommit(cs.state.InitialHeight, 0, types.BlockID{}, nil)
 	case cs.LastCommit.HasTwoThirdsMajority():
 		// Make the commit from LastCommit
 		commit = cs.LastCommit.MakeCommit()

@@ -132,7 +132,7 @@ func (cs *State) catchupReplay(csHeight int64) error {
 		return fmt.Errorf("cannot replay height %v, below initial height %v", csHeight, cs.state.InitialHeight)
 	}
 	endHeight := csHeight - 1
-	if csHeight == cs.state.InitialHeight {
+	if csHeight == cs.state.InitialHeight+1 {
 		endHeight = 0
 	}
 	gr, found, err = cs.wal.SearchForEndHeight(endHeight, &WALSearchOptions{IgnoreDataCorruptionErrors: true})
@@ -302,6 +302,8 @@ func (h *Handshaker) ReplayBlocks(
 	storeBlockBase := h.store.Base()
 	storeBlockHeight := h.store.Height()
 	stateBlockHeight := state.LastBlockHeight
+	// junying-todo
+
 	h.logger.Info(
 		"ABCI Replay Blocks",
 		"appHeight",
@@ -312,7 +314,7 @@ func (h *Handshaker) ReplayBlocks(
 		stateBlockHeight)
 
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain.
-	if appBlockHeight == 0 {
+	if appBlockHeight == 0 || appBlockHeight == state.InitialHeight-1 {
 		validators := make([]*types.Validator, len(h.genDoc.Validators))
 		for i, val := range h.genDoc.Validators {
 			validators[i] = types.NewValidator(val.PubKey, val.Power)
@@ -333,7 +335,7 @@ func (h *Handshaker) ReplayBlocks(
 			return nil, err
 		}
 
-		if stateBlockHeight == 0 { //we only update state when we are in initial state
+		if stateBlockHeight == 0 || stateBlockHeight == state.InitialHeight-1 { //we only update state when we are in initial state
 			// If the app returned validators or consensus params, update the state.
 			if len(res.Validators) > 0 {
 				vals, err := types.PB2TM.ValidatorUpdates(res.Validators)
@@ -351,20 +353,22 @@ func (h *Handshaker) ReplayBlocks(
 				state.ConsensusParams = state.ConsensusParams.Update(res.ConsensusParams)
 			}
 			sm.SaveState(h.stateDB, state)
+			stateBlockHeight = state.InitialHeight - 1
 		}
+		appBlockHeight = state.InitialHeight - 1
 	}
 
 	// First handle edge cases and constraints on the storeBlockHeight and storeBlockBase.
 	switch {
-	case storeBlockHeight == 0:
+	case storeBlockHeight == 0 || storeBlockHeight == state.InitialHeight-1:
 		assertAppHashEqualsOneFromState(appHash, state)
 		return appHash, nil
 
-	case appBlockHeight == 0 && state.InitialHeight < storeBlockBase:
+	case appBlockHeight == state.InitialHeight-1 && state.InitialHeight < storeBlockBase:
 		// the app has no state, and the block store is truncated above the initial height
 		return appHash, sm.ErrAppBlockHeightTooLow{AppHeight: appBlockHeight, StoreBase: storeBlockBase}
 
-	case appBlockHeight > 0 && appBlockHeight < storeBlockBase-1:
+	case appBlockHeight > state.InitialHeight-1 && appBlockHeight < storeBlockBase-1:
 		// the app is too far behind truncated store (can be 1 behind since we replay the next)
 		return appHash, sm.ErrAppBlockHeightTooLow{AppHeight: appBlockHeight, StoreBase: storeBlockBase}
 

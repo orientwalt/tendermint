@@ -15,6 +15,7 @@ import (
 // Validate block
 
 func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block *types.Block) error {
+	block.InitialHeight = state.InitialHeight
 	// Validate internal consistency.
 	if err := block.ValidateBasic(); err != nil {
 		return err
