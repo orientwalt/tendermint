@@ -540,10 +540,8 @@ func (cs *State) updateToState(state sm.State) {
 	// Reset fields based on state.
 	validators := state.Validators
 
-	switch {
-	case state.LastBlockHeight == 0: // Very first commit should be empty.
-		cs.LastCommit = (*types.VoteSet)(nil)
-	case cs.CommitRound > -1 && cs.Votes != nil: // Otherwise, use cs.Votes
+	cs.LastCommit = (*types.VoteSet)(nil)
+	if cs.CommitRound > -1 && cs.Votes != nil { // Otherwise, use cs.Votes
 		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
 			panic(fmt.Sprintf("Wanted to form a Commit, but Precommits (H/R: %d/%d) didn't have 2/3+: %v",
 				state.LastBlockHeight,
@@ -551,12 +549,6 @@ func (cs *State) updateToState(state sm.State) {
 				cs.Votes.Precommits(cs.CommitRound)))
 		}
 		cs.LastCommit = cs.Votes.Precommits(cs.CommitRound)
-	case cs.LastCommit == nil:
-		// NOTE: when Tendermint starts, it has no votes. reconstructLastCommit
-		// must be called to reconstruct LastCommit from SeenCommit.
-		panic(fmt.Sprintf("LastCommit cannot be empty after initial block (H:%d)",
-			state.LastBlockHeight+1,
-		))
 	}
 
 	// Next desired block height
