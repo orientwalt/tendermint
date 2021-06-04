@@ -651,7 +651,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 
 		privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 
-		wal, err := NewWAL(walFile)
+		wal, err := NewWAL(walFile, 1)
 		require.NoError(t, err)
 		wal.SetLogger(log.TestingLogger())
 		err = wal.Start()
