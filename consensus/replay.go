@@ -15,8 +15,8 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	//auto "github.com/tendermint/tendermint/libs/autofile"
 	cfg "github.com/tendermint/tendermint/config"
-	dbm "github.com/tendermint/tm-db"
 	bs "github.com/tendermint/tendermint/libs/bytes"
+	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mock"
@@ -128,14 +128,21 @@ func (cs *State) catchupReplay(csHeight int64) error {
 	// Search for last height marker.
 	//
 	// Ignore data corruption errors in previous heights because we only care about last height
-	gr, found, err = cs.wal.SearchForEndHeight(csHeight-1, &WALSearchOptions{IgnoreDataCorruptionErrors: true})
+	if csHeight < cs.state.InitialHeight {
+		return fmt.Errorf("cannot replay height %v, below initial height %v", csHeight, cs.state.InitialHeight)
+	}
+	endHeight := csHeight - 1
+	if csHeight == cs.state.InitialHeight+1 {
+		endHeight = 0
+	}
+	gr, found, err = cs.wal.SearchForEndHeight(endHeight, &WALSearchOptions{IgnoreDataCorruptionErrors: true})
 	if err == io.EOF {
-		cs.Logger.Error("Replay: wal.group.Search returned EOF", "#ENDHEIGHT", csHeight-1)
+		cs.Logger.Error("Replay: wal.group.Search returned EOF", "#ENDHEIGHT", endHeight)
 	} else if err != nil {
 		return err
 	}
 	if !found {
-		return fmt.Errorf("cannot replay height %d. WAL does not contain #ENDHEIGHT for %d", csHeight, csHeight-1)
+		return fmt.Errorf("cannot replay height %d. WAL does not contain #ENDHEIGHT for %d", csHeight, endHeight)
 	}
 	defer gr.Close() // nolint: errcheck
 
@@ -295,6 +302,8 @@ func (h *Handshaker) ReplayBlocks(
 	storeBlockBase := h.store.Base()
 	storeBlockHeight := h.store.Height()
 	stateBlockHeight := state.LastBlockHeight
+	// junying-todo
+
 	h.logger.Info(
 		"ABCI Replay Blocks",
 		"appHeight",
@@ -305,7 +314,7 @@ func (h *Handshaker) ReplayBlocks(
 		stateBlockHeight)
 
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain.
-	if appBlockHeight == 0 {
+	if appBlockHeight == 0 || appBlockHeight == state.InitialHeight-1 {
 		validators := make([]*types.Validator, len(h.genDoc.Validators))
 		for i, val := range h.genDoc.Validators {
 			validators[i] = types.NewValidator(val.PubKey, val.Power)
@@ -316,6 +325,7 @@ func (h *Handshaker) ReplayBlocks(
 		req := abci.RequestInitChain{
 			Time:            h.genDoc.GenesisTime,
 			ChainId:         h.genDoc.ChainID,
+			InitialHeight:   h.genDoc.InitialHeight,
 			ConsensusParams: csParams,
 			Validators:      nextVals,
 			AppStateBytes:   h.genDoc.AppState,
@@ -325,7 +335,7 @@ func (h *Handshaker) ReplayBlocks(
 			return nil, err
 		}
 
-		if stateBlockHeight == 0 { //we only update state when we are in initial state
+		if stateBlockHeight == 0 || stateBlockHeight == state.InitialHeight-1 { //we only update state when we are in initial state
 			// If the app returned validators or consensus params, update the state.
 			if len(res.Validators) > 0 {
 				vals, err := types.PB2TM.ValidatorUpdates(res.Validators)
@@ -343,16 +353,22 @@ func (h *Handshaker) ReplayBlocks(
 				state.ConsensusParams = state.ConsensusParams.Update(res.ConsensusParams)
 			}
 			sm.SaveState(h.stateDB, state)
+			stateBlockHeight = state.InitialHeight - 1
 		}
+		appBlockHeight = state.InitialHeight - 1
 	}
 
 	// First handle edge cases and constraints on the storeBlockHeight and storeBlockBase.
 	switch {
-	case storeBlockHeight == 0:
+	case storeBlockHeight == 0 || storeBlockHeight == state.InitialHeight-1:
 		assertAppHashEqualsOneFromState(appHash, state)
 		return appHash, nil
 
-	case appBlockHeight < storeBlockBase-1:
+	case appBlockHeight == state.InitialHeight-1 && state.InitialHeight < storeBlockBase:
+		// the app has no state, and the block store is truncated above the initial height
+		return appHash, sm.ErrAppBlockHeightTooLow{AppHeight: appBlockHeight, StoreBase: storeBlockBase}
+
+	case appBlockHeight > state.InitialHeight-1 && appBlockHeight < storeBlockBase-1:
 		// the app is too far behind truncated store (can be 1 behind since we replay the next)
 		return appHash, sm.ErrAppBlockHeightTooLow{AppHeight: appBlockHeight, StoreBase: storeBlockBase}
 
@@ -444,7 +460,11 @@ func (h *Handshaker) replayBlocks(
 	if mutateState {
 		finalBlock--
 	}
-	for i := appBlockHeight + 1; i <= finalBlock; i++ {
+	firstBlock := appBlockHeight + 1
+	if firstBlock == 1 {
+		firstBlock = state.InitialHeight
+	}
+	for i := firstBlock; i <= finalBlock; i++ {
 		h.logger.Info("Applying block", "height", i)
 		block := h.store.LoadBlock(i)
 		// Extra check to ensure the app was not changed in a way it shouldn't have.
@@ -457,7 +477,7 @@ func (h *Handshaker) replayBlocks(
 			}
 		}
 
-		appHash, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, h.logger, h.stateDB)
+		appHash, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, h.logger, h.stateDB, h.genDoc.InitialHeight)
 		if err != nil {
 			return nil, err
 		}

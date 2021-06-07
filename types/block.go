@@ -36,11 +36,12 @@ const (
 
 // Block defines the atomic unit of a Tendermint blockchain.
 type Block struct {
-	mtx        sync.Mutex
-	Header     `json:"header"`
-	Data       `json:"data"`
-	Evidence   EvidenceData `json:"evidence"`
-	LastCommit *Commit      `json:"last_commit"`
+	mtx           sync.Mutex
+	Header        `json:"header"`
+	Data          `json:"data"`
+	Evidence      EvidenceData `json:"evidence"`
+	LastCommit    *Commit      `json:"last_commit"`
+	InitialHeight int64
 }
 
 // ValidateBasic performs basic validation that doesn't involve state data.
@@ -70,10 +71,10 @@ func (b *Block) ValidateBasic() error {
 	}
 
 	// Validate the last commit and its hash.
-	if b.Header.Height > 1 {
-		if b.LastCommit == nil {
-			return errors.New("nil LastCommit")
-		}
+	if b.LastCommit == nil {
+		return errors.New("nil LastCommit")
+	}
+	if b.Header.Height > b.InitialHeight {
 		if err := b.LastCommit.ValidateBasic(); err != nil {
 			return fmt.Errorf("wrong LastCommit: %v", err)
 		}
@@ -686,19 +687,20 @@ func (commit *Commit) ValidateBasic() error {
 		return errors.New("negative Round")
 	}
 
-	if commit.BlockID.IsZero() {
-		return errors.New("commit cannot be for nil block")
-	}
+	if commit.Height >= 1 {
+		if commit.BlockID.IsZero() {
+			return errors.New("commit cannot be for nil block")
+		}
 
-	if len(commit.Signatures) == 0 {
-		return errors.New("no signatures in commit")
-	}
-	for i, commitSig := range commit.Signatures {
-		if err := commitSig.ValidateBasic(); err != nil {
-			return fmt.Errorf("wrong CommitSig #%d: %v", i, err)
+		if len(commit.Signatures) == 0 {
+			return errors.New("no signatures in commit")
+		}
+		for i, commitSig := range commit.Signatures {
+			if err := commitSig.ValidateBasic(); err != nil {
+				return fmt.Errorf("wrong CommitSig #%d: %v", i, err)
+			}
 		}
 	}
-
 	return nil
 }
 

@@ -368,7 +368,7 @@ func (cs *State) Wait() {
 
 // OpenWAL opens a file to log all consensus messages and timeouts for deterministic accountability
 func (cs *State) OpenWAL(walFile string) (WAL, error) {
-	wal, err := NewWAL(walFile)
+	wal, err := NewWAL(walFile, cs.state.InitialHeight)
 	if err != nil {
 		cs.Logger.Error("Failed to open WAL for consensus state", "wal", walFile, "err", err)
 		return nil, err
@@ -508,41 +508,54 @@ func (cs *State) updateToState(state sm.State) {
 		panic(fmt.Sprintf("updateToState() expected state height of %v but found %v",
 			cs.Height, state.LastBlockHeight))
 	}
-	if !cs.state.IsEmpty() && cs.state.LastBlockHeight+1 != cs.Height {
-		// This might happen when someone else is mutating cs.state.
-		// Someone forgot to pass in state.Copy() somewhere?!
-		panic(fmt.Sprintf("Inconsistent cs.state.LastBlockHeight+1 %v vs cs.Height %v",
-			cs.state.LastBlockHeight+1, cs.Height))
-	}
+	if !cs.state.IsEmpty() {
+		if cs.state.LastBlockHeight > 0 && cs.state.LastBlockHeight+1 != cs.Height {
+			// This might happen when someone else is mutating cs.state.
+			// Someone forgot to pass in state.Copy() somewhere?!
+			panic(fmt.Sprintf("Inconsistent cs.state.LastBlockHeight+1 %v vs cs.Height %v",
+				cs.state.LastBlockHeight+1, cs.Height))
+		}
+		if cs.state.LastBlockHeight > 0 && cs.Height == cs.state.InitialHeight {
+			panic(fmt.Sprintf("Inconsistent cs.state.LastBlockHeight %v, expected 0 for initial height %v",
+				cs.state.LastBlockHeight, cs.state.InitialHeight))
+		}
 
-	// If state isn't further out than cs.state, just ignore.
-	// This happens when SwitchToConsensus() is called in the reactor.
-	// We don't want to reset e.g. the Votes, but we still want to
-	// signal the new round step, because other services (eg. txNotifier)
-	// depend on having an up-to-date peer state!
-	if !cs.state.IsEmpty() && (state.LastBlockHeight <= cs.state.LastBlockHeight) {
-		cs.Logger.Info(
-			"Ignoring updateToState()",
-			"newHeight",
-			state.LastBlockHeight+1,
-			"oldHeight",
-			cs.state.LastBlockHeight+1)
-		cs.newStep()
-		return
+		// If state isn't further out than cs.state, just ignore.
+		// This happens when SwitchToConsensus() is called in the reactor.
+		// We don't want to reset e.g. the Votes, but we still want to
+		// signal the new round step, because other services (eg. txNotifier)
+		// depend on having an up-to-date peer state!
+		if state.LastBlockHeight <= cs.state.LastBlockHeight {
+			cs.Logger.Info(
+				"Ignoring updateToState()",
+				"newHeight",
+				state.LastBlockHeight+1,
+				"oldHeight",
+				cs.state.LastBlockHeight+1)
+			cs.newStep()
+			return
+		}
 	}
 
 	// Reset fields based on state.
 	validators := state.Validators
-	lastPrecommits := (*types.VoteSet)(nil)
-	if cs.CommitRound > -1 && cs.Votes != nil {
+
+	cs.LastCommit = (*types.VoteSet)(nil)
+	if cs.CommitRound > -1 && cs.Votes != nil { // Otherwise, use cs.Votes
 		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
-			panic("updateToState(state) called but last Precommit round didn't have +2/3")
+			panic(fmt.Sprintf("Wanted to form a Commit, but Precommits (H/R: %d/%d) didn't have 2/3+: %v",
+				state.LastBlockHeight,
+				cs.CommitRound,
+				cs.Votes.Precommits(cs.CommitRound)))
 		}
-		lastPrecommits = cs.Votes.Precommits(cs.CommitRound)
+		cs.LastCommit = cs.Votes.Precommits(cs.CommitRound)
 	}
 
 	// Next desired block height
 	height := state.LastBlockHeight + 1
+	if height == 1 {
+		height = state.InitialHeight
+	}
 
 	// RoundState fields
 	cs.updateHeight(height)
@@ -570,7 +583,6 @@ func (cs *State) updateToState(state sm.State) {
 	cs.ValidBlockParts = nil
 	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
 	cs.CommitRound = -1
-	cs.LastCommit = lastPrecommits
 	cs.LastValidators = state.LastValidators
 	cs.TriggeredTimeoutPrecommit = false
 
@@ -877,7 +889,7 @@ func (cs *State) enterNewRound(height int64, round int) {
 // needProofBlock returns true on the first height (so the genesis app hash is signed right away)
 // and where the last block (height-1) caused the app hash to change
 func (cs *State) needProofBlock(height int64) bool {
-	if height == 1 {
+	if height == cs.state.InitialHeight {
 		return true
 	}
 
@@ -1029,10 +1041,10 @@ func (cs *State) isProposalComplete() bool {
 func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.PartSet) {
 	var commit *types.Commit
 	switch {
-	case cs.Height == 1:
+	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
-		commit = types.NewCommit(0, 0, types.BlockID{}, nil)
+		commit = types.NewCommit(cs.state.InitialHeight, 0, types.BlockID{}, nil)
 	case cs.LastCommit.HasTwoThirdsMajority():
 		// Make the commit from LastCommit
 		commit = cs.LastCommit.MakeCommit()
@@ -1526,7 +1538,7 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 	// height=0 -> MissingValidators and MissingValidatorsPower are both 0.
 	// Remember that the first LastCommit is intentionally empty, so it's not
 	// fair to increment missing validators number.
-	if height > 1 {
+	if height > cs.state.InitialHeight {
 		// Sanity check that commit size matches validator set size - only applies
 		// after first block.
 		var (
@@ -1579,7 +1591,7 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 	}
 	cs.metrics.ByzantineValidatorsPower.Set(float64(byzantineValidatorsPower))
 
-	if height > 1 {
+	if height > cs.state.InitialHeight {
 		lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)
 		if lastBlockMeta != nil {
 			cs.metrics.BlockIntervalSeconds.Set(
@@ -1730,7 +1742,18 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 				return added, err
 			}
 			cs.evpool.AddEvidence(voteErr.DuplicateVoteEvidence)
+			// var timestamp time.Time
+			// if voteErr.VoteA.Height == cs.state.InitialHeight {
+			// 	timestamp = cs.state.LastBlockTime // genesis time
+			// } else {
+			// 	timestamp = sm.MedianTime(cs.LastCommit.MakeCommit(), cs.LastValidators)
+			// }
+			// evidenceErr := cs.evpool.AddEvidence(types.NewDuplicateVoteEvidence(voteErr.VoteA, voteErr.VoteB, timestamp))
+			// if evidenceErr != nil {
+			// 	cs.Logger.Error("Failed to add evidence to the evidence pool", "err", evidenceErr)
+			// }
 			return added, err
+
 		} else if err == types.ErrVoteNonDeterministicSignature {
 			cs.Logger.Debug("Vote has non-deterministic signature", "err", err)
 		} else {

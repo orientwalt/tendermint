@@ -53,8 +53,8 @@ type State struct {
 	Version Version
 
 	// immutable
-	ChainID string
-
+	ChainID       string
+	InitialHeight int64 // should be 1, not 0, when starting from height 1
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
 	LastBlockHeight int64
 	LastBlockID     types.BlockID
@@ -88,8 +88,9 @@ type State struct {
 // Copy makes a copy of the State for mutating.
 func (state State) Copy() State {
 	return State{
-		Version: state.Version,
-		ChainID: state.ChainID,
+		Version:       state.Version,
+		ChainID:       state.ChainID,
+		InitialHeight: state.InitialHeight,
 
 		LastBlockHeight: state.LastBlockHeight,
 		LastBlockID:     state.LastBlockID,
@@ -144,7 +145,7 @@ func (state State) MakeBlock(
 
 	// Set time.
 	var timestamp time.Time
-	if height == 1 {
+	if height == state.InitialHeight {
 		timestamp = state.LastBlockTime // genesis time
 	} else {
 		timestamp = MedianTime(commit, state.LastValidators)
@@ -234,8 +235,9 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 	}
 
 	return State{
-		Version: initStateVersion,
-		ChainID: genDoc.ChainID,
+		Version:       initStateVersion,
+		ChainID:       genDoc.ChainID,
+		InitialHeight: genDoc.InitialHeight,
 
 		LastBlockHeight: 0,
 		LastBlockID:     types.BlockID{},
@@ -244,10 +246,10 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		NextValidators:              nextValidatorSet,
 		Validators:                  validatorSet,
 		LastValidators:              types.NewValidatorSet(nil),
-		LastHeightValidatorsChanged: 1,
+		LastHeightValidatorsChanged: genDoc.InitialHeight,
 
 		ConsensusParams:                  *genDoc.ConsensusParams,
-		LastHeightConsensusParamsChanged: 1,
+		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
 
 		AppHash: genDoc.AppHash,
 	}, nil

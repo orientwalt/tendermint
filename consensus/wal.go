@@ -88,13 +88,14 @@ type BaseWAL struct {
 
 	flushTicker   *time.Ticker
 	flushInterval time.Duration
+	initialHeight int64
 }
 
 var _ WAL = &BaseWAL{}
 
 // NewWAL returns a new write-ahead logger based on `baseWAL`, which implements
 // WAL. It's flushed and synced to disk every 2s and once when stopped.
-func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*BaseWAL, error) {
+func NewWAL(walFile string, initialHeight int64, groupOptions ...func(*auto.Group)) (*BaseWAL, error) {
 	err := tmos.EnsureDir(filepath.Dir(walFile), 0700)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to ensure WAL directory is in place")
@@ -108,6 +109,7 @@ func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*BaseWAL, error)
 		group:         group,
 		enc:           NewWALEncoder(group),
 		flushInterval: walDefaultFlushInterval,
+		initialHeight: initialHeight,
 	}
 	wal.BaseService = *service.NewBaseService(nil, "baseWAL", wal)
 	return wal, nil
@@ -132,7 +134,7 @@ func (wal *BaseWAL) OnStart() error {
 	if err != nil {
 		return err
 	} else if size == 0 {
-		wal.WriteSync(EndHeightMessage{0})
+		wal.WriteSync(EndHeightMessage{wal.initialHeight - 1})
 	}
 	err = wal.group.Start()
 	if err != nil {
