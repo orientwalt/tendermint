@@ -216,11 +216,14 @@ func validatorListCopy(valsList []*Validator) []*Validator {
 
 // Copy each validator into a new ValidatorSet.
 func (vals *ValidatorSet) Copy() *ValidatorSet {
-	return &ValidatorSet{
-		Validators:       validatorListCopy(vals.Validators),
-		Proposer:         vals.Proposer,
-		totalVotingPower: vals.totalVotingPower,
+	if vals != nil {
+		return &ValidatorSet{
+			Validators:       validatorListCopy(vals.Validators),
+			Proposer:         vals.Proposer,
+			totalVotingPower: vals.totalVotingPower,
+		}
 	}
+	return &ValidatorSet{}
 }
 
 // HasAddress returns true if address given is in the validator set, false -
