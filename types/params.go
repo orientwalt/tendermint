@@ -1,6 +1,8 @@
 package types
 
 import (
+	"time"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -21,6 +23,13 @@ type ConsensusParams struct {
 	Evidence  EvidenceParams  `json:"evidence"`
 	Validator ValidatorParams `json:"validator"`
 }
+
+type ConsensusParamsEx struct {
+	Block     BlockParams     `json:"block"`
+	Evidence  EvidenceParamsEx  `json:"evidence"`
+	Validator ValidatorParams `json:"validator"`
+}
+
 
 // HashedParams is a subset of ConsensusParams.
 // It is amino encoded and hashed into
@@ -44,6 +53,13 @@ type BlockParams struct {
 type EvidenceParams struct {
 	MaxAge int64 `json:"max_age"` // only accept new evidence more recent than this
 }
+
+type EvidenceParamsEx struct {
+	// Note: must be greater than 0
+	MaxAgeNumBlocks      int64         `json:"max_age_num_blocks,omitempty"`
+	MaxAgeDuration       time.Duration `json:"max_age_duration"`
+}
+
 
 // ValidatorParams restrict the public key types validators can use.
 // NOTE: uses ABCI pubkey naming, not Amino names.

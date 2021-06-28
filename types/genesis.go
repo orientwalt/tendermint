@@ -41,6 +41,35 @@ type GenesisDoc struct {
 	AppState        json.RawMessage    `json:"app_state,omitempty"`
 }
 
+type GenesisDocEx struct {
+	GenesisTime     time.Time          `json:"genesis_time"`
+	ChainID         string             `json:"chain_id"`
+	InitialHeight   int64              `json:"initial_height"`
+	ConsensusParams *ConsensusParamsEx `json:"consensus_params,omitempty"`
+	Validators      []GenesisValidator `json:"validators,omitempty"`
+	AppHash         cmn.HexBytes       `json:"app_hash"`
+	AppState        json.RawMessage    `json:"app_state,omitempty"`
+}
+
+func NewGenesisDocEx(doc *GenesisDoc, initialHeight int64) *GenesisDocEx {
+	return &GenesisDocEx{
+		GenesisTime:   doc.GenesisTime,
+		ChainID:       doc.ChainID,
+		InitialHeight: initialHeight,
+		ConsensusParams: &ConsensusParamsEx{
+			Block:     doc.ConsensusParams.Block,
+			Validator: doc.ConsensusParams.Validator,
+			Evidence: EvidenceParamsEx{
+				MaxAgeNumBlocks: 100000,
+				MaxAgeDuration:  time.Duration(172800000000000),
+			},
+		},
+		Validators: doc.Validators,
+		AppHash:    doc.AppHash,
+		AppState:   doc.AppState,
+	}
+}
+
 // SaveAs is a utility method for saving GenensisDoc as a JSON file.
 func (genDoc *GenesisDoc) SaveAs(file string) error {
 	genDocBytes, err := cdc.MarshalJSONIndent(genDoc, "", "  ")
