@@ -213,7 +213,7 @@ type BaseConfig struct { //nolint: maligned
 	// so the app can decide if we should keep the connection or not
 	FilterPeers bool `mapstructure:"filter_peers"` // false
 
-	// by yqq 2021-03-26  
+	// by yqq 2021-03-26
 	ReplayHeight int64 `mapstructure:"replay_height"`
 }
 
@@ -232,7 +232,7 @@ func DefaultBaseConfig() BaseConfig {
 		ProfListenAddress:  "",
 		FastSyncMode:       true,
 		FilterPeers:        false,
-		DBBackend:          "goleveldb",
+		DBBackend:          "cleveldb", // use cleveldb to improve performance
 		DBPath:             "data",
 		ReplayHeight:       -1,
 	}
