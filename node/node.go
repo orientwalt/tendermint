@@ -65,9 +65,9 @@ type DBProvider func(*DBContext) (dbm.DB, error)
 // specified in the ctx.Config.
 func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
 	dbBackend := ctx.Config.DBBackend
-	if ctx.Config.DBBackend == "leveldb" {
-		dbBackend = "cleveldb"
-	}
+	// if ctx.Config.DBBackend == "leveldb" {
+	// 	dbBackend = "cleveldb"
+	// }
 	dbType := dbm.BackendType(dbBackend)
 	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir()), nil
 }

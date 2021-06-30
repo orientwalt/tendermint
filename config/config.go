@@ -232,7 +232,8 @@ func DefaultBaseConfig() BaseConfig {
 		ProfListenAddress:  "",
 		FastSyncMode:       true,
 		FilterPeers:        false,
-		DBBackend:          "cleveldb", // use cleveldb to improve performance
+		// DBBackend:          "cleveldb", // use cleveldb to improve performance
+		DBBackend:          "goleveldb", // cleveldb depend on share library libleveldb.so
 		DBPath:             "data",
 		ReplayHeight:       -1,
 	}
