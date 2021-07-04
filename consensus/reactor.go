@@ -456,6 +456,7 @@ func (conR *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 }
 
 func makeRoundStepMessage(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage) {
+	fmt.Printf("Height:%d, Round:%d, Step:%d, LastCommitRound:%d\n", rs.Height, rs.Round, rs.Step, rs.LastCommit.GetRound())
 	nrsMsg = &NewRoundStepMessage{
 		Height:                rs.Height,
 		Round:                 rs.Round,
