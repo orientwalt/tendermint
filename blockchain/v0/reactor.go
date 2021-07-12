@@ -83,11 +83,11 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *st
 	const capacity = 1000                      // must be bigger than peers count
 	errorsCh := make(chan peerError, capacity) // so we don't block in #Receive#pool.AddBlock
 
-	pool := NewBlockPool(
-		store.Height()+1,
-		requestsCh,
-		errorsCh,
-	)
+	startHeight := store.Height() + 1
+	if startHeight == 1 {
+		startHeight = state.InitialHeight
+	}
+	pool := NewBlockPool(startHeight, requestsCh, errorsCh)
 
 	bcR := &BlockchainReactor{
 		initialState: state,
@@ -336,7 +336,6 @@ FOR_LOOP:
 				continue FOR_LOOP
 			} else {
 				bcR.pool.PopRequest()
-
 				// TODO: batch saves so we dont persist to disk every block
 				bcR.store.SaveBlock(first, firstParts, second.LastCommit)
 

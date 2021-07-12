@@ -74,7 +74,7 @@ func (b *Block) ValidateBasic() error {
 	if b.LastCommit == nil {
 		return errors.New("nil LastCommit")
 	}
-	if b.Header.Height > b.InitialHeight+1 {
+	if b.Header.Height > b.InitialHeight+1 && b.InitialHeight > 0 {
 		if err := b.LastCommit.ValidateBasic(); err != nil {
 			return fmt.Errorf("wrong LastCommit[height:%d,iheight:%d]: %v", b.Header.Height, b.InitialHeight, err)
 		}

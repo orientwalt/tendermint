@@ -91,6 +91,10 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *st
 	errorsForFSMCh := make(chan bcReactorMessage, capacity)
 
 	startHeight := store.Height() + 1
+
+	if startHeight == 1 {
+		startHeight = state.InitialHeight
+	}
 	bcR := &BlockchainReactor{
 		initialState:     state,
 		state:            state,
@@ -282,7 +286,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 
 // processBlocksRoutine processes blocks until signlaed to stop over the stopProcessing channel
 func (bcR *BlockchainReactor) processBlocksRoutine(stopProcessing chan struct{}) {
-
+	fmt.Println("***********processBlocksRoutine")
 	processReceivedBlockTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
 	doProcessBlockCh := make(chan struct{}, 1)
 
@@ -293,9 +297,11 @@ ForLoop:
 	for {
 		select {
 		case <-stopProcessing:
+			fmt.Println("***********stopProcessing")
 			bcR.Logger.Info("finishing block execution")
 			break ForLoop
 		case <-processReceivedBlockTicker.C: // try to execute blocks
+			fmt.Println("***********processBlocksRoutine")
 			select {
 			case doProcessBlockCh <- struct{}{}:
 			default:
@@ -318,7 +324,7 @@ ForLoop:
 				if err != nil {
 					break
 				}
-
+				fmt.Println("***********doProcessBlockCh")
 				bcR.blocksSynced++
 				if bcR.blocksSynced%100 == 0 {
 					lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
@@ -411,7 +417,7 @@ func (bcR *BlockchainReactor) reportPeerErrorToSwitch(err error, peerID p2p.ID) 
 }
 
 func (bcR *BlockchainReactor) processBlock() error {
-
+	fmt.Println("#####bcR.fsm.FirstTwoBlocks()")
 	first, second, err := bcR.fsm.FirstTwoBlocks()
 	if err != nil {
 		// We need both to sync the first block.
@@ -435,7 +441,6 @@ func (bcR *BlockchainReactor) processBlock() error {
 	}
 
 	bcR.store.SaveBlock(first, firstParts, second.LastCommit)
-
 	bcR.state, _, err = bcR.blockExec.ApplyBlock(bcR.state, firstID, first)
 	if err != nil {
 		panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
