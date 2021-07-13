@@ -242,14 +242,14 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	case StateChannel:
 		switch msg := msg.(type) {
 		case *NewRoundStepMessage:
-			conR.conS.mtx.Lock()
-			initialHeight := conR.conS.state.InitialHeight
-			conR.conS.mtx.Unlock()
-			if err = msg.ValidateHeight(initialHeight); err != nil {
-				conR.Logger.Error("Peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
-				conR.Switch.StopPeerForError(src, err)
-				return
-			}
+			// conR.conS.mtx.Lock()
+			// initialHeight := conR.conS.state.InitialHeight
+			// conR.conS.mtx.Unlock()
+			// if err = msg.ValidateHeight(initialHeight); err != nil {
+			// 	conR.Logger.Error("Peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
+			// 	conR.Switch.StopPeerForError(src, err)
+			// 	return
+			// }
 			ps.ApplyNewRoundStepMessage(msg)
 		case *NewValidBlockMessage:
 			ps.ApplyNewValidBlockMessage(msg)
@@ -456,6 +456,7 @@ func (conR *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 }
 
 func makeRoundStepMessage(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage) {
+	// fmt.Printf("Height:%d, Round:%d, Step:%d, LastCommitRound:%d\n", rs.Height, rs.Round, rs.Step, rs.LastCommit.GetRound())
 	nrsMsg = &NewRoundStepMessage{
 		Height:                rs.Height,
 		Round:                 rs.Round,

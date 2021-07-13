@@ -41,7 +41,7 @@ type Block struct {
 	Data          `json:"data"`
 	Evidence      EvidenceData `json:"evidence"`
 	LastCommit    *Commit      `json:"last_commit"`
-	InitialHeight int64
+	InitialHeight int64        `json:"-"`
 }
 
 // ValidateBasic performs basic validation that doesn't involve state data.
@@ -74,9 +74,9 @@ func (b *Block) ValidateBasic() error {
 	if b.LastCommit == nil {
 		return errors.New("nil LastCommit")
 	}
-	if b.Header.Height > b.InitialHeight {
+	if b.Header.Height > b.InitialHeight+1 && b.InitialHeight > 0 {
 		if err := b.LastCommit.ValidateBasic(); err != nil {
-			return fmt.Errorf("wrong LastCommit: %v", err)
+			return fmt.Errorf("wrong LastCommit[height:%d,iheight:%d]: %v", b.Header.Height, b.InitialHeight, err)
 		}
 	}
 	if err := ValidateHash(b.LastCommitHash); err != nil {

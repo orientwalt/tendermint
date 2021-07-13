@@ -758,9 +758,10 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	sort.Sort(types.PrivValidatorsByAddress(privValidators))
 
 	return &types.GenesisDoc{
-		GenesisTime: tmtime.Now(),
-		ChainID:     config.ChainID(),
-		Validators:  validators,
+		GenesisTime:   tmtime.Now(),
+		InitialHeight: 1,
+		ChainID:       config.ChainID(),
+		Validators:    validators,
 	}, privValidators
 }
 

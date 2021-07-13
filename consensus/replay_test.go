@@ -153,7 +153,8 @@ LOOP:
 		logger := log.NewNopLogger()
 		blockDB := dbm.NewMemDB()
 		stateDB := blockDB
-		state, _ := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
+		state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
+		require.NoError(t, err)
 		privValidator := loadPrivValidator(consensusReplayConfig)
 		cs := newStateWithConfigAndBlockStore(
 			consensusReplayConfig,
@@ -797,9 +798,9 @@ func buildTMStateFromChain(
 	nBlocks int,
 	mode uint) sm.State {
 	// run the whole chain against this client to build up the tendermint state
+	dbDir := filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode))
 	clientCreator := proxy.NewLocalClientCreator(
-		kvstore.NewPersistentKVStoreApplication(
-			filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode))))
+		kvstore.NewPersistentKVStoreApplication(dbDir))
 	proxyApp := proxy.NewAppConns(clientCreator)
 	if err := proxyApp.Start(); err != nil {
 		panic(err)

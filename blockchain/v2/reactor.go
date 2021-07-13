@@ -158,7 +158,11 @@ type blockApplier interface {
 // XXX: V1 stores a copy of state as initialState, which is never mutated. Is that nessesary?
 func newReactor(state state.State, store blockStore, reporter behaviour.Reporter,
 	blockApplier blockApplier, bufferSize int) *BlockchainReactor {
-	scheduler := newScheduler(state.LastBlockHeight, time.Now())
+	initHeight := state.LastBlockHeight + 1
+	if initHeight == 1 {
+		initHeight = state.InitialHeight
+	}
+	scheduler := newScheduler(initHeight, time.Now())
 	pContext := newProcessorContext(store, blockApplier, state)
 	// TODO: Fix naming to just newProcesssor
 	// newPcState requires a processorContext
