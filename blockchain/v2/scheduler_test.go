@@ -42,7 +42,11 @@ func newTestScheduler(params scTestParams) *scheduler {
 	peers := make(map[p2p.ID]*scPeer)
 	var maxHeight int64
 
-	sc := newScheduler(params.initHeight, params.startTime)
+	initHeight := params.initHeight
+	if initHeight == 0 {
+		initHeight = 1
+	}
+	sc := newScheduler(initHeight, params.startTime)
 	if params.height != 0 {
 		sc.height = params.height
 	}
@@ -95,7 +99,8 @@ func TestScInit(t *testing.T) {
 		initHeight int64 = 5
 		sc               = newScheduler(initHeight, time.Now())
 	)
-	assert.Equal(t, blockStateProcessed, sc.getStateAtHeight(initHeight))
+	assert.Equal(t, blockStateProcessed, sc.getStateAtHeight(initHeight-1))
+	assert.Equal(t, blockStateUnknown, sc.getStateAtHeight(initHeight))
 	assert.Equal(t, blockStateUnknown, sc.getStateAtHeight(initHeight+1))
 }
 
@@ -114,9 +119,8 @@ func TestScMaxHeights(t *testing.T) {
 		{
 			name: "one ready peer",
 			sc: scheduler{
-				initHeight: 2,
-				height:     3,
-				peers:      map[p2p.ID]*scPeer{"P1": {height: 6, state: peerStateReady}},
+				height: 3,
+				peers:  map[p2p.ID]*scPeer{"P1": {height: 6, state: peerStateReady}},
 			},
 			wantMax: 6,
 		},
@@ -1129,14 +1133,13 @@ func TestScNextHeightToSchedule(t *testing.T) {
 	}{
 		{
 			name:       "no blocks",
-			fields:     scTestParams{initHeight: 10, height: 11},
+			fields:     scTestParams{initHeight: 11, height: 11},
 			wantHeight: -1,
 		},
 		{
 			name: "only New blocks",
 			fields: scTestParams{
-				initHeight: 2,
-				height:     3,
+				initHeight: 3,
 				peers:      map[string]*scPeer{"P1": {height: 6, state: peerStateReady}},
 				allB:       []int64{3, 4, 5, 6},
 			},
@@ -1145,7 +1148,7 @@ func TestScNextHeightToSchedule(t *testing.T) {
 		{
 			name: "only Pending blocks",
 			fields: scTestParams{
-				height:      1,
+				initHeight:  1,
 				peers:       map[string]*scPeer{"P1": {height: 4, state: peerStateReady}},
 				allB:        []int64{1, 2, 3, 4},
 				pending:     map[int64]p2p.ID{1: "P1", 2: "P1", 3: "P1", 4: "P1"},
@@ -1156,26 +1159,26 @@ func TestScNextHeightToSchedule(t *testing.T) {
 		{
 			name: "only Received blocks",
 			fields: scTestParams{
-				height:   1,
-				peers:    map[string]*scPeer{"P1": {height: 4, state: peerStateReady}},
-				allB:     []int64{1, 2, 3, 4},
-				received: map[int64]p2p.ID{1: "P1", 2: "P1", 3: "P1", 4: "P1"},
+				initHeight: 1,
+				peers:      map[string]*scPeer{"P1": {height: 4, state: peerStateReady}},
+				allB:       []int64{1, 2, 3, 4},
+				received:   map[int64]p2p.ID{1: "P1", 2: "P1", 3: "P1", 4: "P1"},
 			},
 			wantHeight: -1,
 		},
 		{
 			name: "only Processed blocks",
 			fields: scTestParams{
-				height: 1,
-				peers:  map[string]*scPeer{"P1": {height: 4, state: peerStateReady}},
-				allB:   []int64{1, 2, 3, 4},
+				initHeight: 1,
+				peers:      map[string]*scPeer{"P1": {height: 4, state: peerStateReady}},
+				allB:       []int64{1, 2, 3, 4},
 			},
 			wantHeight: 1,
 		},
 		{
 			name: "mixed block states",
 			fields: scTestParams{
-				height:      1,
+				initHeight:  1,
 				peers:       map[string]*scPeer{"P1": {height: 4, state: peerStateReady}},
 				allB:        []int64{1, 2, 3, 4},
 				pending:     map[int64]p2p.ID{2: "P1"},
@@ -1542,8 +1545,7 @@ func TestScHandleBlockProcessed(t *testing.T) {
 		{
 			name: "processed block we don't have",
 			fields: scTestParams{
-				initHeight:  5,
-				height:      6,
+				initHeight:  6,
 				peers:       map[string]*scPeer{"P1": {height: 8, state: peerStateReady}},
 				allB:        []int64{6, 7, 8},
 				pending:     map[int64]p2p.ID{6: "P1"},
@@ -1555,8 +1557,7 @@ func TestScHandleBlockProcessed(t *testing.T) {
 		{
 			name: "processed block ok, we processed all blocks",
 			fields: scTestParams{
-				initHeight: 5,
-				height:     6,
+				initHeight: 6,
 				peers:      map[string]*scPeer{"P1": {height: 7, state: peerStateReady}},
 				allB:       []int64{6, 7},
 				received:   map[int64]p2p.ID{6: "P1", 7: "P1"},
@@ -1567,8 +1568,7 @@ func TestScHandleBlockProcessed(t *testing.T) {
 		{
 			name: "processed block ok, we still have blocks to process",
 			fields: scTestParams{
-				initHeight: 5,
-				height:     6,
+				initHeight: 6,
 				peers:      map[string]*scPeer{"P1": {height: 8, state: peerStateReady}},
 				allB:       []int64{6, 7, 8},
 				pending:    map[int64]p2p.ID{7: "P1", 8: "P1"},
@@ -1612,8 +1612,7 @@ func TestScHandleBlockVerificationFailure(t *testing.T) {
 		{
 			name: "failed block we don't have, single peer is still removed",
 			fields: scTestParams{
-				initHeight:  5,
-				height:      6,
+				initHeight:  6,
 				peers:       map[string]*scPeer{"P1": {height: 8, state: peerStateReady}},
 				allB:        []int64{6, 7, 8},
 				pending:     map[int64]p2p.ID{6: "P1"},
@@ -1625,7 +1624,7 @@ func TestScHandleBlockVerificationFailure(t *testing.T) {
 		{
 			name: "failed block we don't have, one of two peers are removed",
 			fields: scTestParams{
-				initHeight:  5,
+				initHeight:  6,
 				peers:       map[string]*scPeer{"P1": {height: 8, state: peerStateReady}, "P2": {height: 8, state: peerStateReady}},
 				allB:        []int64{6, 7, 8},
 				pending:     map[int64]p2p.ID{6: "P1"},
@@ -1637,8 +1636,7 @@ func TestScHandleBlockVerificationFailure(t *testing.T) {
 		{
 			name: "failed block, all blocks are processed after removal",
 			fields: scTestParams{
-				initHeight: 5,
-				height:     6,
+				initHeight: 6,
 				peers:      map[string]*scPeer{"P1": {height: 7, state: peerStateReady}},
 				allB:       []int64{6, 7},
 				received:   map[int64]p2p.ID{6: "P1", 7: "P1"},
@@ -1649,7 +1647,7 @@ func TestScHandleBlockVerificationFailure(t *testing.T) {
 		{
 			name: "failed block, we still have blocks to process",
 			fields: scTestParams{
-				initHeight: 4,
+				initHeight: 5,
 				peers:      map[string]*scPeer{"P1": {height: 8, state: peerStateReady}, "P2": {height: 8, state: peerStateReady}},
 				allB:       []int64{5, 6, 7, 8},
 				pending:    map[int64]p2p.ID{7: "P1", 8: "P1"},
@@ -1661,7 +1659,7 @@ func TestScHandleBlockVerificationFailure(t *testing.T) {
 		{
 			name: "failed block, H+1 and H+2 delivered by different peers, we still have blocks to process",
 			fields: scTestParams{
-				initHeight: 4,
+				initHeight: 5,
 				peers: map[string]*scPeer{
 					"P1": {height: 8, state: peerStateReady},
 					"P2": {height: 8, state: peerStateReady},
@@ -1710,9 +1708,9 @@ func TestScHandleAddNewPeer(t *testing.T) {
 		{
 			name: "add duplicate peer",
 			fields: scTestParams{
-				height: 6,
-				peers:  map[string]*scPeer{"P1": {height: 8, state: peerStateReady}},
-				allB:   []int64{6, 7, 8},
+				initHeight: 6,
+				peers:      map[string]*scPeer{"P1": {height: 8, state: peerStateReady}},
+				allB:       []int64{6, 7, 8},
 			},
 			args:      args{event: addP1},
 			wantEvent: scSchedulerFail{reason: fmt.Errorf("some error")},
@@ -1720,9 +1718,9 @@ func TestScHandleAddNewPeer(t *testing.T) {
 		{
 			name: "add P1 to non empty scheduler",
 			fields: scTestParams{
-				height: 6,
-				peers:  map[string]*scPeer{"P2": {height: 8, state: peerStateReady}},
-				allB:   []int64{6, 7, 8},
+				initHeight: 6,
+				peers:      map[string]*scPeer{"P2": {height: 8, state: peerStateReady}},
+				allB:       []int64{6, 7, 8},
 			},
 			args:      args{event: addP1},
 			wantEvent: noOpEvent{},

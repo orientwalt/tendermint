@@ -314,7 +314,7 @@ func (h *Handshaker) ReplayBlocks(
 		stateBlockHeight)
 
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain.
-	if appBlockHeight == 0 || appBlockHeight == state.InitialHeight-1 {
+	if appBlockHeight == 0 {
 		validators := make([]*types.Validator, len(h.genDoc.Validators))
 		for i, val := range h.genDoc.Validators {
 			validators[i] = types.NewValidator(val.PubKey, val.Power)
@@ -335,7 +335,7 @@ func (h *Handshaker) ReplayBlocks(
 			return nil, err
 		}
 
-		if stateBlockHeight == 0 || stateBlockHeight == state.InitialHeight-1 { //we only update state when we are in initial state
+		if stateBlockHeight == 0  { //we only update state when we are in initial state
 			// If the app returned validators or consensus params, update the state.
 			if len(res.Validators) > 0 {
 				vals, err := types.PB2TM.ValidatorUpdates(res.Validators)
@@ -360,7 +360,7 @@ func (h *Handshaker) ReplayBlocks(
 
 	// First handle edge cases and constraints on the storeBlockHeight and storeBlockBase.
 	switch {
-	case storeBlockHeight == 0 || storeBlockHeight == state.InitialHeight-1:
+	case storeBlockHeight == 0:
 		assertAppHashEqualsOneFromState(appHash, state)
 		return appHash, nil
 

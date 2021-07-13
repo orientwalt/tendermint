@@ -41,7 +41,7 @@ type Block struct {
 	Data          `json:"data"`
 	Evidence      EvidenceData `json:"evidence"`
 	LastCommit    *Commit      `json:"last_commit"`
-	InitialHeight int64
+	InitialHeight int64        `json:"-"`
 }
 
 // ValidateBasic performs basic validation that doesn't involve state data.
